@@ -10,7 +10,7 @@
 // Check project homepage at https://code.google.com/p/hott-for-ardupilot/
 //
 // 08/2012 by Adam Majerczyk (majerczyk.adam@gmail.com)
-// v0.9b (beta software)
+// v0.9.1b (beta software)
 //
 // Developed and tested with:
 // Transmitter MC-32 v1.030
