@@ -675,7 +675,6 @@ void _hott_update_gam_msg() {
 #endif
 
 #ifdef HOTT_SIM_EAM_SENSOR
-static int _hott_fake_cap = 0;
 //Update EAM sensor data
 void _hott_update_eam_msg() {
 	(int &)hott_eam_msg.batt1_voltage_L = (int)(0);
@@ -685,7 +684,7 @@ void _hott_update_eam_msg() {
 	(int &)hott_eam_msg.altitude_L = (int)((current_loc.alt - home.alt) / 100)+500;
 	(int &)hott_eam_msg.current_L = current_amps1*10;
 	(int &)hott_eam_msg.main_voltage_L = (int)(battery_voltage1 * 10.0);
-	(int &)hott_eam_msg.batt_cap_L = _hott_fake_cap++;//current_total1 / 10;
+	(int &)hott_eam_msg.batt_cap_L = current_total1 / 10;
 	(int &)hott_eam_msg.speed_L = (int)((float)(g_gps->ground_speed * 0.036));
 
   	(int &)hott_eam_msg.climbrate_L = 30000 + climb_rate_actual;  
