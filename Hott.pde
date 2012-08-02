@@ -20,6 +20,14 @@
 
 #ifdef HOTT_TELEMETRY
 
+#if HOTT_TELEMETRY_SERIAL_PORT == 2
+	FastSerialPort2(Serial2);      //HOTT serial port
+	#define _HOTT_PORT	Serial2
+#else
+#error HOTT serial port undefined. Please define HOTT_TELEMETRY_SERIAL_PORT
+#endif
+
+
 #define HOTT_TEXT_MODE_REQUEST_ID	0x7f
 #define HOTT_BINARY_MODE_REQUEST_ID	0x80
 //Sensor Ids
@@ -41,6 +49,7 @@
 #define HOTT_TEXT_MODE_INC_DEC	        0x09
 
 static boolean _hott_telemetry_is_sending = false;
+static byte _hott_telemetry_sendig_msgs_id = 0;
 
 #define HOTT_TEXTMODE_MSG_TEXT_LEN 168
 //Text mode msgs type
@@ -120,10 +129,10 @@ struct HOTT_GAM_MSG {
 	byte rpm2_L;				//#39 RPM in 10 RPM steps. 300 = 3000rpm
 	byte rpm2_H;				//#40
 	byte general_error_number;	//#41 Voice error == 12. TODO: more docu
-	byte pressure;				//#41 Pressure up to 16bar. 0,1bar scale. 20 = 2bar
-	byte version;				//#42 version number TODO: more info?
-	byte stop_byte;				//#43 stop byte
-	byte parity;				//#44 CRC/Parity
+	byte pressure;				//#42 Pressure up to 16bar. 0,1bar scale. 20 = 2bar
+	byte version;				//#43 version number TODO: more info?
+	byte stop_byte;				//#44 stop byte
+	byte parity;				//#45 CRC/Parity
 };
 
 static struct HOTT_GAM_MSG hott_gam_msg;
@@ -430,7 +439,8 @@ void _hott_serial_scheduler(uint32_t tnow) {
   if(_hott_msg_ptr == 0) return;   //no data to send
   if(_hott_telemetry_is_sending) {
     //we are sending already, wait for a delay of 2ms between data bytes
-    if(tnow - _hott_serial_timer < 2000)  //delay ca. 2,5 mS. 19200 baud = 520uS / Byte + 2ms required delay
+    if(tnow - _hott_serial_timer < 3000)  //delay ca. 3,5 mS. 19200 baud = 520uS / Byte + 3ms required delay
+    										// Graupner Specs claims here 2ms but in reality it's 3ms, they using 3ms too...
       return;
   } else {
   	//new data request
@@ -608,18 +618,21 @@ void _hott_send_msg(byte *buffer, int len) {
 #ifdef HOTT_SIM_GAM_SENSOR
 void _hott_send_gam_msg() {
 	_hott_send_msg((byte *)&hott_gam_msg, sizeof(struct HOTT_GAM_MSG));
+  _hott_telemetry_sendig_msgs_id = HOTT_TELEMETRY_GAM_SENSOR_ID;
 }
 #endif
 
 #ifdef HOTT_SIM_VARIO_SENSOR
 void _hott_send_vario_msg() {
 	_hott_send_msg((byte *)&hott_vario_msg, sizeof(struct HOTT_VARIO_MSG));
+	_hott_telemetry_sendig_msgs_id = HOTT_TELEMETRY_VARIO_SENSOR_ID;
 }
 #endif
 
 #ifdef HOTT_SIM_GPS_SENSOR
 void _hott_send_gps_msg() {
   _hott_send_msg((byte *)&hott_gps_msg, sizeof(struct HOTT_GPS_MSG));
+  _hott_telemetry_sendig_msgs_id = HOTT_TELEMETRY_GPS_SENSOR_ID;
 }
 #endif
 
@@ -627,11 +640,13 @@ void _hott_send_gps_msg() {
 //Send EMA sensor data
 void _hott_send_eam_msg() {
   _hott_send_msg((byte *)&hott_eam_msg, sizeof(struct HOTT_EAM_MSG));
+  _hott_telemetry_sendig_msgs_id = HOTT_TELEMETRY_EAM_SENSOR_ID;
 }
 #endif
 
 void _hott_send_text_msg() {
   _hott_send_msg((byte *)&hott_txt_msg, sizeof(struct HOTT_TEXTMODE_MSG));
+  _hott_telemetry_sendig_msgs_id = HOTT_TEXT_MODE_REQUEST_ID;
 }
 
 #ifdef HOTT_SIM_GAM_SENSOR
@@ -660,6 +675,7 @@ void _hott_update_gam_msg() {
 #endif
 
 #ifdef HOTT_SIM_EAM_SENSOR
+static int _hott_fake_cap = 0;
 //Update EAM sensor data
 void _hott_update_eam_msg() {
 	(int &)hott_eam_msg.batt1_voltage_L = (int)(0);
@@ -669,7 +685,7 @@ void _hott_update_eam_msg() {
 	(int &)hott_eam_msg.altitude_L = (int)((current_loc.alt - home.alt) / 100)+500;
 	(int &)hott_eam_msg.current_L = current_amps1*10;
 	(int &)hott_eam_msg.main_voltage_L = (int)(battery_voltage1 * 10.0);
-	(int &)hott_eam_msg.batt_cap_L = current_total1 / 10;
+	(int &)hott_eam_msg.batt_cap_L = _hott_fake_cap++;//current_total1 / 10;
 	(int &)hott_eam_msg.speed_L = (int)((float)(g_gps->ground_speed * 0.036));
 
   	(int &)hott_eam_msg.climbrate_L = 30000 + climb_rate_actual;  
@@ -866,17 +882,21 @@ char * _hott_invert_all_chars(char *str) {
 */
 void _hott_update_telemetry_data() {
   //no update while sending
-  if(_hott_telemetry_is_sending) return;
+  
 #ifdef HOTT_SIM_GPS_SENSOR
+  if(!(_hott_telemetry_is_sending && _hott_telemetry_sendig_msgs_id == HOTT_TELEMETRY_GPS_SENSOR_ID))
 	_hott_update_gps_msg();
 #endif
 #ifdef HOTT_SIM_EAM_SENSOR
+  if(!(_hott_telemetry_is_sending && _hott_telemetry_sendig_msgs_id == HOTT_TELEMETRY_EAM_SENSOR_ID))
 	_hott_update_eam_msg();
 #endif
 #ifdef HOTT_SIM_VARIO_SENSOR
+  if(!(_hott_telemetry_is_sending && _hott_telemetry_sendig_msgs_id == HOTT_TELEMETRY_VARIO_SENSOR_ID))
 	_hott_update_vario_msg();
 #endif
 #ifdef HOTT_SIM_GAM_SENSOR
+  if(!(_hott_telemetry_is_sending && _hott_telemetry_sendig_msgs_id == HOTT_TELEMETRY_GAM_SENSOR_ID))
 	_hott_update_gam_msg();
 #endif
 }
