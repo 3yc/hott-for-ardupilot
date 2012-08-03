@@ -435,7 +435,7 @@ static uint32_t _hott_serial_timer;
   @param tnow  timestamp in uSecond
 */
 void _hott_serial_scheduler(uint32_t tnow) {
-	_hott_check_serial_data(tnow);	// Check for data request
+   _hott_check_serial_data(tnow);	// Check for data request
   if(_hott_msg_ptr == 0) return;   //no data to send
   if(_hott_telemetry_is_sending) {
     //we are sending already, wait for a delay of 2ms between data bytes
@@ -726,20 +726,26 @@ void _hott_update_gps_msg() {
 	case AUTO:
         case LOITER:
           //Use home direction field to display direction an distance to next waypoint
-          (int &)hott_gps_msg.home_distance_L = get_distance_cm(&current_loc, &next_WP) / 100;
-          hott_gps_msg.home_direction = get_bearing(&current_loc, &next_WP) / 200; //get_bearing() return value in degrees * 100
-          //Display WP to mark the change of meaning!
-           hott_gps_msg.free_char1 ='W';
-           hott_gps_msg.free_char2 ='P';
+          {
+          	  int32_t dist = get_distance_cm(&current_loc, &next_WP);
+	          (int &)hott_gps_msg.home_distance_L = dist < 0 ? 0 : dist / 100;
+    	      hott_gps_msg.home_direction = get_bearing(&current_loc, &next_WP) / 200; //get_bearing() return value in degrees * 100
+        	  //Display WP to mark the change of meaning!
+           	hott_gps_msg.free_char1 ='W';
+           	hott_gps_msg.free_char2 ='P';
+           }
            break;
 
         default:
         //Display Home direction and distance
-          (int &)hott_gps_msg.home_distance_L = get_distance_cm(&current_loc, &home) / 100;
+        {
+          int32_t dist = get_distance_cm(&current_loc, &home);
+          (int &)hott_gps_msg.home_distance_L = dist < 0 ? 0 : dist / 100;
           hott_gps_msg.home_direction = get_bearing(&current_loc, &home) / 200; //get_bearing() return value in degrees * 100
           hott_gps_msg.free_char1 = 0;
           hott_gps_msg.free_char2 = 0;
           break;
+        }
 	}
 
   
