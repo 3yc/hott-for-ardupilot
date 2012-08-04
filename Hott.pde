@@ -23,7 +23,13 @@
 #if HOTT_TELEMETRY_SERIAL_PORT == 2
 	FastSerialPort2(Serial2);      //HOTT serial port
 	#define _HOTT_PORT	Serial2
-#else
+#endif
+#if HOTT_TELEMETRY_SERIAL_PORT == 3
+	FastSerialPort3(Serial3);      //HOTT serial port
+	#define _HOTT_PORT	Serial3
+#endif
+
+#ifndef HOTT_TELEMETRY_SERIAL_PORT
 #error HOTT serial port undefined. Please define HOTT_TELEMETRY_SERIAL_PORT
 #endif
 
@@ -364,9 +370,20 @@ void _hott_enable_receiver() {
   UCSR2B &= ~_BV(TXEN2);
   UCSR2B |= _BV(RXEN2);
 }
-#else
-	//TODO: add more serial port definitions
-	#error please define your port settings...
+#endif
+
+#if HOTT_TELEMETRY_SERIAL_PORT == 3
+void _hott_enable_transmitter() {
+  //enables serial transmitter, disables receiver
+    UCSR3B &= ~_BV(RXEN3);
+    UCSR3B |= _BV(TXEN3); 
+}
+
+void _hott_enable_receiver() {
+   //enables serial receiver, disables transmitter
+  UCSR3B &= ~_BV(TXEN3);
+  UCSR3B |= _BV(RXEN3);
+}
 #endif
 
 //*****************************************************************************
