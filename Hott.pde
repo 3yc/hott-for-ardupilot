@@ -54,6 +54,9 @@
 //Inc+Dec -> Set button on transmittier
 #define HOTT_TEXT_MODE_INC_DEC	        0x09
 
+//HoTT alarm macro
+#define HOTT_ALARM_NUM(a) (a-0x40)
+
 static boolean _hott_telemetry_is_sending = false;
 static byte _hott_telemetry_sendig_msgs_id = 0;
 
@@ -400,7 +403,6 @@ void _hott_msgs_init() {
   
   hott_gps_msg.version = 0x00;
   hott_gps_msg.end_byte = 0x7d;
-//  hott_gps_msg.parity = _hott_checksum((byte *)&hott_gps_msg, sizeof(struct HOTT_GPS_MSG));
 #endif
 
 #ifdef HOTT_SIM_EAM_SENSOR
@@ -409,7 +411,6 @@ void _hott_msgs_init() {
  hott_eam_msg.eam_sensor_id = HOTT_TELEMETRY_EAM_SENSOR_ID;
  hott_eam_msg.sensor_id = 0xe0;
  hott_eam_msg.stop_byte = 0x7d;
-// hott_eam_msg.parity = _hott_checksum((byte *)&hott_eam_msg, sizeof(struct HOTT_EAM_MSG));
 #endif
 
 #ifdef HOTT_SIM_VARIO_SENSOR
@@ -438,8 +439,6 @@ void _hott_msgs_init() {
   sprintf((char *)&hott_txt_msg.msg_txt[1*21],"by Adam Majerczyk");
   sprintf((char *)&hott_txt_msg.msg_txt[2*21],"adam@3yc.de");
   sprintf((char *)&hott_txt_msg.msg_txt[4*21],"more to come!");
-
-  hott_txt_msg.parity = _hott_checksum((byte *)&hott_txt_msg, sizeof(struct HOTT_TEXTMODE_MSG));
 }
 
 /*
@@ -471,7 +470,7 @@ void _hott_serial_scheduler(uint32_t tnow) {
   Transmitts a HoTT message
 */
 void _hott_send_telemetry_data() {
-
+  static int msg_crc = 0;
   if(!_hott_telemetry_is_sending) {
   	// new message to send
     _hott_telemetry_is_sending = true;
@@ -483,10 +482,17 @@ void _hott_send_telemetry_data() {
     //all data send
     _hott_msg_ptr = 0;
     _hott_telemetry_is_sending = false;
+    msg_crc = 0;
     _hott_enable_receiver();
     _HOTT_PORT.flush();
   } else {
     --_hott_msg_len;
+    if(_hott_msg_len != 0) {
+       	msg_crc += *_hott_msg_ptr; 
+    } else {
+    	//last byte, send crc
+	    *_hott_msg_ptr = (byte) (msg_crc);
+    }
     _HOTT_PORT.write(*_hott_msg_ptr++);
   }
 }
@@ -502,18 +508,6 @@ void _hott_setup() {
   //init msgs
   _hott_msgs_init();  //set default values  
 }
-
-/*
-  Calculates HoTT message checksum/parity
-*/
-byte _hott_checksum(byte *buffer, int len) {
-  int checksum = 0;
-  for(int i=0; i< len -1; i++) {
-    checksum += buffer[i];
-  }
-  return (byte) checksum;
-}
-
 
 /*
   Check for a valid HoTT requests on serial bus
@@ -548,7 +542,6 @@ void _hott_check_serial_data(uint32_t tnow) {
              if(tmp == (HOTT_TELEMETRY_GPS_SENSOR_ID & 0x0f)) {
                memset((char *)&hott_txt_msg.msg_txt[3*21], 0x20, 21); //clear line
                sprintf((char *)&hott_txt_msg.msg_txt[3*21],_hott_invert_all_chars("GPS sensor module"));
-               hott_txt_msg.parity = _hott_checksum((byte *)&hott_txt_msg, sizeof(struct HOTT_TEXTMODE_MSG));
                _hott_send_text_msg();	//send message
              }
 #endif
@@ -556,7 +549,6 @@ void _hott_check_serial_data(uint32_t tnow) {
              if(tmp == (HOTT_TELEMETRY_EAM_SENSOR_ID & 0x0f)) {
                memset((char *)&hott_txt_msg.msg_txt[3*21], 0x20, 21); //clear line
                sprintf((char *)&hott_txt_msg.msg_txt[3*21],_hott_invert_all_chars("EAM sensor module"));
-               hott_txt_msg.parity = _hott_checksum((byte *)&hott_txt_msg, sizeof(struct HOTT_TEXTMODE_MSG));
                _hott_send_text_msg();	//send message
              }
 #endif
@@ -564,7 +556,6 @@ void _hott_check_serial_data(uint32_t tnow) {
              if(tmp == (HOTT_TELEMETRY_VARIO_SENSOR_ID & 0x0f)) {
                memset((char *)&hott_txt_msg.msg_txt[3*21], 0x20, 21); //clear line
                sprintf((char *)&hott_txt_msg.msg_txt[3*21],_hott_invert_all_chars("VARIO sensor module"));
-               hott_txt_msg.parity = _hott_checksum((byte *)&hott_txt_msg, sizeof(struct HOTT_TEXTMODE_MSG));
                _hott_send_text_msg();	//send message
              }
 #endif
@@ -572,7 +563,6 @@ void _hott_check_serial_data(uint32_t tnow) {
              if(tmp == (HOTT_TELEMETRY_GAM_SENSOR_ID & 0x0f)) {
                memset((char *)&hott_txt_msg.msg_txt[3*21], 0x20, 21); //clear line
                sprintf((char *)&hott_txt_msg.msg_txt[3*21],_hott_invert_all_chars("GAM sensor module"));
-               hott_txt_msg.parity = _hott_checksum((byte *)&hott_txt_msg, sizeof(struct HOTT_TEXTMODE_MSG));
                _hott_send_text_msg();	//send message
              }
 #endif
@@ -685,9 +675,6 @@ void _hott_update_gam_msg() {
     } else {
         hott_gam_msg.alarm_invers2 &= 0x7f;
     }
-
-	//calc checksum
-	hott_gam_msg.parity = _hott_checksum((byte *)&hott_gam_msg, sizeof(struct HOTT_GAM_MSG));
 }
 #endif
 
@@ -707,15 +694,14 @@ void _hott_update_eam_msg() {
   	(int &)hott_eam_msg.climbrate_L = 30000 + climb_rate_actual;  
   	hott_eam_msg.climbrate3s = 120 + (climb_rate / 100);  // 0 m/3s using filtered data here
   	
-        //display ON when motors are armed
-        if (motors.armed()) {
-          hott_eam_msg.alarm_invers2 |= 0x80;
-        } else {
-          hott_eam_msg.alarm_invers2 &= 0x7f;
-        }
-    //hott_eam_msg.warning_beeps = 'V' - 0x40;
-	hott_eam_msg.parity = _hott_checksum((byte *)&hott_eam_msg, sizeof(struct HOTT_EAM_MSG));
+    //display ON when motors are armed
+    if (motors.armed()) {
+      hott_eam_msg.alarm_invers2 |= 0x80;
+    } else {
+      hott_eam_msg.alarm_invers2 &= 0x7f;
+    }
 }
+
 #endif
 
 #ifdef HOTT_SIM_GPS_SENSOR
@@ -837,9 +823,6 @@ void _hott_update_gps_msg() {
   
   hott_gps_msg.gps_time_s = t / 1000;
   hott_gps_msg.gps_time_sss = t - (hott_gps_msg.gps_time_s * 1000);
-  
-  // Calc checksum
-  hott_gps_msg.parity = _hott_checksum((byte *)&hott_gps_msg, sizeof(struct HOTT_GPS_MSG));
 }
 #endif
 
@@ -876,7 +859,6 @@ void _hott_update_vario_msg() {
 	}
 	memset(hott_vario_msg.text_msg,0x20,HOTT_VARIO_MSG_TEXT_LEN);
 	snprintf((char*)hott_vario_msg.text_msg,HOTT_VARIO_MSG_TEXT_LEN, "%s %s", &armed, &mode);
-	hott_vario_msg.parity = _hott_checksum((byte *)&hott_vario_msg, sizeof(struct HOTT_VARIO_MSG));
 }
 #endif
 
