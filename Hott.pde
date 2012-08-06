@@ -1108,18 +1108,26 @@ static uint8_t t = 0;
 //
 void _hott_set_voice_alarm(uint8_t profile, uint8_t value) {
 	switch(profile) {
+                #ifdef HOTT_SIM_EAM_SENSOR
 		case HOTT_TELEMETRY_EAM_SENSOR_ID:
 			hott_eam_msg.warning_beeps = value;
 			break;
+                #endif  
+                #ifdef HOTT_SIM_GPS_SENSOR
 		case HOTT_TELEMETRY_GPS_SENSOR_ID:
 			hott_gps_msg.warning_beeps = value;
 			break;
+                #endif
+                #ifdef HOTT_SIM_VARIO_SENSOR
 		case HOTT_TELEMETRY_VARIO_SENSOR_ID:
 			hott_vario_msg.warning_beeps = value;
 			break;
-		case HOTT_TELEMETRY_GAM_SENSOR_ID:
+                #endif
+                #ifdef HOTT_SIM_GAM_SENSOR
+                case HOTT_TELEMETRY_GAM_SENSOR_ID:
 			hott_gam_msg.warning_beeps = value;
 			break;
+                #endif
 		default:
 			break;
 	}
@@ -1158,37 +1166,55 @@ void _hott_alarm_scheduler() {
 		
 		//
 		switch(_hott_alarm_queue[i].alarm_profile) {
+                       
+                        #ifdef HOTT_SIM_EAM_SENSOR
 			case HOTT_TELEMETRY_EAM_SENSOR_ID:
 				vEam |= _hott_alarm_queue[i].visual_alarm1;
 				vEam2 |= _hott_alarm_queue[i].visual_alarm2;
 				break;
+                        #endif  
+                        #ifdef HOTT_SIM_GPS_SENSOR  
 			case HOTT_TELEMETRY_GPS_SENSOR_ID:
 				vGps |= _hott_alarm_queue[i].visual_alarm1;
 				vGps2 |= _hott_alarm_queue[i].visual_alarm2;
 				break;
-			case HOTT_TELEMETRY_VARIO_SENSOR_ID:
+                        #endif
+                        #ifdef HOTT_SIM_VARIO_SENSOR
+                       	case HOTT_TELEMETRY_VARIO_SENSOR_ID:
 				vVario |= _hott_alarm_queue[i].visual_alarm1;
 				break;
-			case HOTT_TELEMETRY_GAM_SENSOR_ID:
+                        #endif
+                        #ifdef HOTT_SIM_GAM_SENSOR
+                        case HOTT_TELEMETRY_GAM_SENSOR_ID:
 				vGam |= _hott_alarm_queue[i].visual_alarm1;		
 				vGam2 |= _hott_alarm_queue[i].visual_alarm2;		
 				break;
+                        #endif
 			default:
 				break;
 		}
 	} //end: visual alarm loop
 
 	// Set all visual alarms
+        #ifdef HOTT_SIM_EAM_SENSOR
 	hott_eam_msg.alarm_invers1 |= vEam;
 	hott_eam_msg.alarm_invers2 |= vEam2;
-
-	hott_gam_msg.alarm_invers1 |= vGam;
-	hott_gam_msg.alarm_invers2 |= vGam2;
-
-	hott_vario_msg.alarm_invers1 |= vVario;
-
-	hott_gps_msg.alarm_invers1 |= vGps;
+        #endif  
+        
+        #ifdef HOTT_SIM_GPS_SENSOR
+        hott_gps_msg.alarm_invers1 |= vGps;
 	hott_gps_msg.alarm_invers2 |= vGps2;
+        
+        #endif
+        #ifdef HOTT_SIM_VARIO_SENSOR
+	hott_vario_msg.alarm_invers1 |= vVario;
+        #endif
+        
+        #ifdef HOTT_SIM_GAM_SENSOR
+        hott_gam_msg.alarm_invers1 |= vGam;
+	hott_gam_msg.alarm_invers2 |= vGam2;
+        #endif
+	
 
 	if(activeAlarm != 0) { //is an alarm active
 		if ( ++activeAlarmTimer % 50 == 0 ) {	//every 1sec
