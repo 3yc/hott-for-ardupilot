@@ -744,17 +744,6 @@ void _hott_update_eam_msg() {
 
   	(int &)hott_eam_msg.climbrate_L = 30000 + climb_rate_actual;  
   	hott_eam_msg.climbrate3s = 120 + (climb_rate / 100);  // 0 m/3s using filtered data here
-     
-     
-    //Alarm when Voltage is to low
-          if( (int)(battery_voltage1 * 10.0) < (g.low_voltage*10)) {
-             hott_eam_msg.warning_beeps = 'V';
-             bitWrite(hott_eam_msg.alarm_invers1, 7, 1); //V invers
-          } else {
-             hott_eam_msg.warning_beeps = 0x00;
-             bitWrite(hott_eam_msg.alarm_invers1, 7, 0); //V invers
-          }
-           
   	
     //display ON when motors are armed
     if (motors.armed()) {
