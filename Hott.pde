@@ -10,7 +10,7 @@
 // Check project homepage at https://code.google.com/p/hott-for-ardupilot/
 //
 // 08/2012 by Adam Majerczyk (majerczyk.adam@gmail.com)
-// v0.9.1b (beta software)
+// v0.9.2b (beta software)
 //
 // Developed and tested with:
 // Transmitter MC-32 v1.030
@@ -54,9 +54,6 @@
 //Inc+Dec -> Set button on transmittier
 #define HOTT_TEXT_MODE_INC_DEC	        0x09
 
-//HoTT alarm macro
-#define HOTT_ALARM_NUM(a) (a-0x40)
-
 static boolean _hott_telemetry_is_sending = false;
 static byte _hott_telemetry_sendig_msgs_id = 0;
 
@@ -80,6 +77,28 @@ struct HOTT_GAM_MSG {
 	byte start_byte;			//#01 start byte constant value 0x7c
 	byte gam_sensor_id; 		//#02 EAM sensort id. constat value 0x8d
 	byte warning_beeps;			//#03 1=A 2=B ... 0x1a=Z  0 = no alarm
+								// Q	Min cell voltage sensor 1
+								// R	Min Battery 1 voltage sensor 1
+								// J	Max Battery 1 voltage sensor 1
+								// F	Min temperature sensor 1
+								// H	Max temperature sensor 1
+								// S	Min Battery 2 voltage sensor 2
+								// K	Max Battery 2 voltage sensor 2
+								// G	Min temperature sensor 2
+								// I	Max temperature sensor 2
+								// W	Max current
+								// V	Max capacity mAh
+								// P	Min main power voltage
+								// X	Max main power voltage
+								// O	Min altitude
+								// Z	Max altitude
+								// C	negative difference m/s too high
+								// A	negative difference m/3s too high
+								// N	positive difference m/s too high
+								// L	positive difference m/3s too high
+								// T	Minimum RPM
+								// Y	Maximum RPM
+
 	byte sensor_id;	            //#04 constant value 0xd0
 	byte alarm_invers1;			//#05 alarm bitmask. Value is displayed inverted
 								//Bit#	Alarm field
@@ -154,8 +173,29 @@ struct HOTT_VARIO_MSG {
 	byte start_byte;			//#01 start byte constant value 0x7c
 	byte vario_sensor_id; 		//#02 VARIO sensort id. constat value 0x89
 	byte warning_beeps;			//#03 1=A 2=B ...
+								// Q	Min cell voltage sensor 1
+								// R	Min Battery 1 voltage sensor 1
+								// J	Max Battery 1 voltage sensor 1
+								// F	Min temperature sensor 1
+								// H	Max temperature sensor 1
+								// S	Min Battery voltage sensor 2
+								// K	Max Battery voltage sensor 2
+								// G	Min temperature sensor 2
+								// I	Max temperature sensor 2
+								// W	Max current
+								// V	Max capacity mAh
+								// P	Min main power voltage
+								// X	Max main power voltage
+								// O	Min altitude
+								// Z	Max altitude
+								// T	Minimum RPM
+								// Y	Maximum RPM
+								// C	m/s negative difference
+								// A	m/3s negative difference
+
+
 	byte sensor_id;	            //#04 constant value 0x90
-	byte inverse_status;		//#05 Inverse display (alarm?) bitmask
+	byte alarm_invers1;		//#05 Inverse display (alarm?) bitmask
 								//TODO: more info
 	byte altitude_L;			//#06 Altitude low byte. In meters. A value of 500 means 0m
 	byte altitude_H;			//#07 Altitude high byte
@@ -291,10 +331,21 @@ struct HOTT_GPS_MSG {
   byte start_byte;      //#01 constant value 0x7c
   byte gps_sensor_id;   //#02 constant value 0x8a
   byte warning_beeps;   //#03 1=A 2=B ...
+						// A	Min Speed
+						// L	Max Speed
+						// O	Min Altitude
+						// Z	Max Altitude
+						// C	(negative) sink rate m/sec to high
+						// B	(negative) sink rate m/3sec to high
+						// N	climb rate m/sec to high
+						// M	climb rate m/3sec to high
+						// D	Max home distance
+						// 
+
   byte sensor_id;       //#04 constant (?) value 0xa0
-  byte inverse_status;	//#05
+  byte alarm_invers1;	//#05
   						//TODO: more info
-  byte inverse_status_status;	//#06  1 = No GPS signal
+  byte alarm_invers2;	//#06  1 = No GPS signal
   								//TODO: more info
 
   byte flight_direction; //#07 flight direction in 2 degreees/step (1 = 2degrees);
@@ -696,12 +747,11 @@ void _hott_update_eam_msg() {
   	
     //display ON when motors are armed
     if (motors.armed()) {
-      hott_eam_msg.alarm_invers2 |= 0x80;
-    } else {
-      hott_eam_msg.alarm_invers2 &= 0x7f;
-    }
+       hott_eam_msg.alarm_invers2 |= 0x80;
+     } else {
+       hott_eam_msg.alarm_invers2 &= 0x7f;
+     }
 }
-
 #endif
 
 #ifdef HOTT_SIM_GPS_SENSOR
@@ -714,12 +764,12 @@ void _hott_update_gps_msg() {
 
   
   if(g_gps->status() == GPS::GPS_OK) {
-    hott_gps_msg.inverse_status_status = 0;
+    hott_gps_msg.alarm_invers2 = 0;
     hott_gps_msg.gps_fix_char = '3';  
     hott_gps_msg.free_char3 = '3';  //3D Fix according to specs...
   } else {
     //No GPS Fix
-    hott_gps_msg.inverse_status_status = 1;
+    hott_gps_msg.alarm_invers2 = 1;
     hott_gps_msg.gps_fix_char = '-';
     hott_gps_msg.free_char3 = '-';
     (int &)hott_gps_msg.home_distance_L = (int)0; // set distance to 0 since there is no GPS signal
@@ -903,6 +953,310 @@ void _hott_update_telemetry_data() {
   if(!(_hott_telemetry_is_sending && _hott_telemetry_sendig_msgs_id == HOTT_TELEMETRY_GAM_SENSOR_ID))
 	_hott_update_gam_msg();
 #endif
+	_hoot_check_alarm();
+	_hott_alarm_scheduler();
+	_hott_update_replay_queue();
 }
+
+//****************************************************************************************
+// Alarm stuff
+//
+//HoTT alarm macro
+#define HOTT_ALARM_NUM(a) (a-0x40)
+
+struct _hott_alarm_event_T {
+	uint16_t alarm_time; 		//Alarm play time in 1sec units
+	uint16_t alarm_time_replay;	//Alarm repeat time in 1sec. units. 0 -> One time alarm
+								//forces a delay between new alarms of the same kind
+	uint8_t visual_alarm1;		//Visual alarm bitmask
+	uint8_t visual_alarm2;		//Visual alarm bitmask
+	uint8_t alarm_num;			//Alarm number 0..255 (A-Z)
+	uint8_t alarm_profile;		//profile id ie HOTT_TELEMETRY_GPS_SENSOR_ID
+};
+typedef struct _hott_alarm_event_T _hott_alarm_event;
+
+#define HOTT_ALARM_QUEUE_MAX		5
+//TODO: better queueing solution
+static _hott_alarm_event _hott_alarm_queue[HOTT_ALARM_QUEUE_MAX];
+static _hott_alarm_event _hott_alarm_replay_queue[HOTT_ALARM_QUEUE_MAX];
+static uint8_t _hott_alarmCnt = 0;
+static uint8_t _hott_alarm_ReplayCnt = 0;
+
+//
+// checks if an alarm exists in active queue
+//
+boolean _hoot_alarm_active_exists(struct _hott_alarm_event_T *alarm) {
+	//check active alarms
+	for(uint8_t i=0; i<_hott_alarmCnt; i++) {
+		if(_hott_alarm_queue[i].alarm_num == alarm->alarm_num &&
+			_hott_alarm_queue[i].alarm_profile == alarm->alarm_profile) {
+			//alarm exists.
+			return true;
+		}
+	}
+	return false;
+}
+
+//
+// checks if an alarm exists in replay queue
+//
+boolean _hoot_alarm_replay_exists(struct _hott_alarm_event_T *alarm) {
+	//check replay delay queue
+	for(uint8_t i=0; i<_hott_alarm_ReplayCnt; i++) {
+		if(_hott_alarm_replay_queue[i].alarm_num == alarm->alarm_num &&
+			_hott_alarm_replay_queue[i].alarm_profile == alarm->alarm_profile) {
+			//alarm exists
+			return true;
+		}
+	}
+	return false;
+}
+
+//
+// checks if an alarm exists
+//
+boolean _hoot_alarm_exists(struct _hott_alarm_event_T *alarm) {
+	if(_hoot_alarm_active_exists(alarm))
+		return true;
+	if(_hoot_alarm_replay_exists(alarm))
+		return true;
+	return false;
+}
+
+//
+// adds an alarm to active queue
+//
+void _hott_add_alarm(struct _hott_alarm_event_T *alarm) {
+	if(alarm == 0)
+		return;
+	if(_hott_alarmCnt >= HOTT_ALARM_QUEUE_MAX)
+		return;	//no more space left...
+	if(_hoot_alarm_exists(alarm)) 
+		return;
+	// we have a new alarm
+	memcpy(&_hott_alarm_queue[_hott_alarmCnt++], alarm, sizeof(struct _hott_alarm_event_T));
+//	Serial.print("\nadd to queue");
+}
+
+//
+// adds an alarm to replay queue
+//
+void _hott_add_replay_alarm(struct _hott_alarm_event_T *alarm) {
+	if(alarm == 0)
+		return;
+	if(_hott_alarm_ReplayCnt >= HOTT_ALARM_QUEUE_MAX)
+		return;	//no more space left...
+	if(_hoot_alarm_replay_exists(alarm)) 
+		return;
+	// we have a new alarm
+	memcpy(&_hott_alarm_replay_queue[_hott_alarm_ReplayCnt++], alarm, sizeof(struct _hott_alarm_event_T));
+//	Serial.print("\nadd to replay queue");
+}
+
+//
+//removes an alarm from active queue
+//first alarm at offset 1
+//
+void _hott_remove_alarm(uint8_t num) {
+	if(num > _hott_alarmCnt || num == 0)	//has to be > 0
+		return; // possibile error
+
+	if(_hott_alarmCnt != 1) {
+		memcpy(&_hott_alarm_queue[num-1], &_hott_alarm_queue[num], sizeof(struct _hott_alarm_event_T) * (_hott_alarmCnt - num) );
+	}
+	--_hott_alarmCnt;
+//	Serial.print("\nremove from queue");
+}
+
+//
+//removes an alarm from replay queue
+//first alarm at offset 1
+//
+void _hott_remove_replay_alarm(uint8_t num) {
+	if(num > _hott_alarm_ReplayCnt || num == 0)	//has to be > 0
+		return; // possibile error
+
+	if(_hott_alarm_ReplayCnt != 1) {
+		memcpy(&_hott_alarm_replay_queue[num-1], &_hott_alarm_replay_queue[num], sizeof(struct _hott_alarm_event_T) * (_hott_alarm_ReplayCnt - num) );
+	}
+	--_hott_alarm_ReplayCnt;
+//	Serial.print("\nremove from delay queue");
+}
+
+//
+// Updates replay delay queue
+//
+void _hott_update_replay_queue(void) {
+static uint8_t t = 0;
+	if(++t < 50)
+		return;
+	//every second
+	t = 0;
+
+	for(uint8_t i=0; i< _hott_alarm_ReplayCnt; i++) {
+		if(--_hott_alarm_replay_queue[i].alarm_time_replay == 0) {
+			//remove it
+			_hott_remove_replay_alarm(i+1);
+			i--;
+			continue;
+		}
+	}
+}
+
+//
+// Sets a voice alarm value
+//
+void _hott_set_voice_alarm(uint8_t profile, uint8_t value) {
+	switch(profile) {
+		case HOTT_TELEMETRY_EAM_SENSOR_ID:
+			hott_eam_msg.warning_beeps = value;
+			break;
+		case HOTT_TELEMETRY_GPS_SENSOR_ID:
+			hott_gps_msg.warning_beeps = value;
+			break;
+		case HOTT_TELEMETRY_VARIO_SENSOR_ID:
+			hott_vario_msg.warning_beeps = value;
+			break;
+		case HOTT_TELEMETRY_GAM_SENSOR_ID:
+			hott_gam_msg.warning_beeps = value;
+			break;
+		default:
+			break;
+	}
+}
+
+//
+// active alarm scheduler
+//
+void _hott_alarm_scheduler() {
+	static uint8_t activeAlarmTimer = 3* 50;
+	static uint8_t activeAlarm = 0;
+
+	if(_hott_alarmCnt < 1)
+		return;	//no alarms	
+
+	uint8_t vEam = 0;
+	uint8_t vEam2 = 0;
+	uint8_t vVario = 0;
+	uint8_t vGps = 0;
+	uint8_t vGps2 = 0;
+	uint8_t vGam = 0;
+	uint8_t vGam2 = 0;
+	
+	for(uint8_t i = 0; i< _hott_alarmCnt; i++) {
+		if(_hott_alarm_queue[i].alarm_time == 0) {
+			//end of alarm, remove it
+			//no check for current msg to be send, so maybe the crc will be wrong
+			_hott_set_voice_alarm(_hott_alarm_queue[i].alarm_profile, 0);
+			if(_hott_alarm_queue[i].alarm_time_replay != 0)
+				_hott_add_replay_alarm(&_hott_alarm_queue[i]);
+			_hott_remove_alarm(i+1);	//first alarm at offset 1
+			--i;	//correct counter
+//			Serial.print("\nremoved alarm");
+			continue;
+		}
+		
+		//
+		switch(_hott_alarm_queue[i].alarm_profile) {
+			case HOTT_TELEMETRY_EAM_SENSOR_ID:
+				vEam |= _hott_alarm_queue[i].visual_alarm1;
+				vEam2 |= _hott_alarm_queue[i].visual_alarm2;
+				break;
+			case HOTT_TELEMETRY_GPS_SENSOR_ID:
+				vGps |= _hott_alarm_queue[i].visual_alarm1;
+				vGps2 |= _hott_alarm_queue[i].visual_alarm2;
+				break;
+			case HOTT_TELEMETRY_VARIO_SENSOR_ID:
+				vVario |= _hott_alarm_queue[i].visual_alarm1;
+				break;
+			case HOTT_TELEMETRY_GAM_SENSOR_ID:
+				vGam |= _hott_alarm_queue[i].visual_alarm1;		
+				vGam2 |= _hott_alarm_queue[i].visual_alarm2;		
+				break;
+			default:
+				break;
+		}
+	} //end: visual alarm loop
+
+	// Set all visual alarms
+	hott_eam_msg.alarm_invers1 |= vEam;
+	hott_eam_msg.alarm_invers2 |= vEam2;
+
+	hott_gam_msg.alarm_invers1 |= vGam;
+	hott_gam_msg.alarm_invers2 |= vGam2;
+
+	hott_vario_msg.alarm_invers1 |= vVario;
+
+	hott_gps_msg.alarm_invers1 |= vGps;
+	hott_gps_msg.alarm_invers2 |= vGps2;
+
+	if(activeAlarm != 0) { //is an alarm active
+		if ( ++activeAlarmTimer % 50 == 0 ) {	//every 1sec
+			_hott_alarm_queue[activeAlarm-1].alarm_time--;
+		}
+		if ( activeAlarmTimer < 50 * 2) //alter alarm every 2 sec
+			return;
+	}
+	activeAlarmTimer = 0;
+
+	if(++activeAlarm > _hott_alarmCnt) {
+		activeAlarm = 1;
+	}
+	if(_hott_alarmCnt <= 0) {
+		activeAlarm = 0;
+		return;
+	}
+//Serial.printf("\nAlarm change %d",activeAlarm);
+	_hott_set_voice_alarm(_hott_alarm_queue[activeAlarm-1].alarm_profile, _hott_alarm_queue[activeAlarm-1].alarm_num);
+}
+
+//****************************************************************************************
+// Sensor specific code
+//
+#ifdef HOTT_SIM_EAM_SENSOR
+//
+// triggers max consumed mAh alarm
+//
+void _hott_eam_check_mAh() {
+	_hott_alarm_event _hott_ema_alarm_event;
+	if( (g.battery_monitoring == 4) && (g.pack_capacity - current_total1) <= 0.0) {
+		_hott_ema_alarm_event.alarm_time = 6;	//1sec units
+		_hott_ema_alarm_event.alarm_time_replay = 15;	//1sec units
+		_hott_ema_alarm_event.visual_alarm1 = 0x01;	//blink mAh
+		_hott_ema_alarm_event.visual_alarm2 = 0;
+		_hott_ema_alarm_event.alarm_num = HOTT_ALARM_NUM('V');
+		_hott_ema_alarm_event.alarm_profile = HOTT_TELEMETRY_EAM_SENSOR_ID;
+		_hott_add_alarm(&_hott_ema_alarm_event);
+	}
+}
+
+//
+// triggers low main power voltage alarm
+//
+void _hott_eam_check_mainPower() {
+	//voltage sensor needs some time at startup
+	if((millis() > 10000) && (g.battery_monitoring != 0) && (battery_voltage1 < g.low_voltage)) {
+		_hott_alarm_event _hott_ema_alarm_event;
+		_hott_ema_alarm_event.alarm_time = 6;	//1sec units
+		_hott_ema_alarm_event.alarm_time_replay = 30; //1sec unit
+		_hott_ema_alarm_event.visual_alarm1 = 0x80;	//blink main power
+		_hott_ema_alarm_event.visual_alarm2 = 0;
+		_hott_ema_alarm_event.alarm_num = HOTT_ALARM_NUM('P');
+		_hott_ema_alarm_event.alarm_profile = HOTT_TELEMETRY_EAM_SENSOR_ID;
+		_hott_add_alarm(&_hott_ema_alarm_event);
+	}
+}
+#endif
+
+//
+//	alarm triggers to check
+//
+void _hoot_check_alarm()  {
+#ifdef HOTT_SIM_EAM_SENSOR
+	_hott_eam_check_mAh();
+	_hott_eam_check_mainPower();
+#endif
+}
+
 
 #endif	//End of #ifdef HOTT_TELEMETRY
