@@ -10,7 +10,7 @@
 // Check project homepage at https://code.google.com/p/hott-for-ardupilot/
 //
 // 01/2013 by Adam Majerczyk (majerczyk.adam@gmail.com)
-// v0.9.4b (beta software)
+// v0.9.5b (beta software)
 //
 // Developed and tested with:
 // Transmitter MC-32 v1.030
@@ -57,6 +57,7 @@
 static boolean _hott_telemetry_is_sending = false;
 static byte _hott_telemetry_sendig_msgs_id = 0;
 
+#ifdef HOTT_SIM_TEXTMODE
 #define HOTT_TEXTMODE_MSG_TEXT_LEN 168
 //Text mode msgs type
 struct HOTT_TEXTMODE_MSG {
@@ -70,7 +71,7 @@ struct HOTT_TEXTMODE_MSG {
 	byte parity;		//#172 Checksum / parity
 };
 static HOTT_TEXTMODE_MSG hott_txt_msg;
-
+#endif
 
 #ifdef HOTT_SIM_GAM_SENSOR
 struct HOTT_GAM_MSG {
@@ -480,6 +481,7 @@ void _hott_msgs_init() {
  hott_gam_msg.stop_byte = 0x7d;
 #endif
  
+#ifdef HOTT_SIM_TEXTMODE
   memset(&hott_txt_msg, 0, sizeof(struct HOTT_TEXTMODE_MSG));
   hott_txt_msg.start_byte = 0x7b;
   hott_txt_msg.fill1 = 0x00;
@@ -490,6 +492,7 @@ void _hott_msgs_init() {
   sprintf((char *)&hott_txt_msg.msg_txt[1*21],"by Adam Majerczyk");
   sprintf((char *)&hott_txt_msg.msg_txt[2*21],"adam@3yc.de");
   sprintf((char *)&hott_txt_msg.msg_txt[4*21],"more to come!");
+#endif
 }
 
 /*
@@ -551,11 +554,10 @@ void _hott_send_telemetry_data() {
 /*
   Onetime setup for HoTT
 */
-void _hott_setup() {
+void _hott_setup() { 
   _HOTT_PORT.begin(19200);
   _hott_enable_receiver();
   timer_scheduler.register_process(_hott_serial_scheduler);
-
   //init msgs
   _hott_msgs_init();  //set default values  
 }
@@ -584,9 +586,11 @@ void _hott_check_serial_data(uint32_t tnow) {
         //ok, we have a valid request, check for address
         switch(c) {
 //*****************************************************************************
+#ifdef HOTT_SIM_TEXTMODE
           case HOTT_TEXT_MODE_REQUEST_ID:
            //Text mode
              {
+
              byte tmp = (addr >> 4);
 #ifdef HOTT_SIM_GPS_SENSOR
 				//GPS module text mode
@@ -617,9 +621,9 @@ void _hott_check_serial_data(uint32_t tnow) {
                _hott_send_text_msg();	//send message
              }
 #endif
-
            }
            break;
+#endif
 //*****************************************************************************
           case HOTT_BINARY_MODE_REQUEST_ID:
 #ifdef HOTT_SIM_GPS_SENSOR
@@ -702,10 +706,12 @@ void _hott_send_eam_msg() {
 }
 #endif
 
+#ifdef HOTT_SIM_TEXTMODE
 void _hott_send_text_msg() {
   _hott_send_msg((byte *)&hott_txt_msg, sizeof(struct HOTT_TEXTMODE_MSG));
   _hott_telemetry_sendig_msgs_id = HOTT_TEXT_MODE_REQUEST_ID;
 }
+#endif
 
 #ifdef HOTT_SIM_GAM_SENSOR
 void _hott_update_gam_msg() {
@@ -1128,18 +1134,26 @@ static uint8_t t = 0;
 //
 void _hott_set_voice_alarm(uint8_t profile, uint8_t value) {
 	switch(profile) {
-		case HOTT_TELEMETRY_EAM_SENSOR_ID:
+#ifdef HOTT_SIM_EAM_SENSOR
+  		case HOTT_TELEMETRY_EAM_SENSOR_ID:
 			hott_eam_msg.warning_beeps = value;
 			break;
+#endif
+#ifdef HOTT_SIM_GPS_SENSOR
 		case HOTT_TELEMETRY_GPS_SENSOR_ID:
 			hott_gps_msg.warning_beeps = value;
 			break;
+#endif
+#ifdef HOTT_SIM_VARIO_SENSOR
 		case HOTT_TELEMETRY_VARIO_SENSOR_ID:
 			hott_vario_msg.warning_beeps = value;
 			break;
+#endif
+#ifdef HOTT_SIM_GAM_SENSOR
 		case HOTT_TELEMETRY_GAM_SENSOR_ID:
 			hott_gam_msg.warning_beeps = value;
 			break;
+#endif
 		default:
 			break;
 	}
@@ -1178,38 +1192,49 @@ void _hott_alarm_scheduler() {
 		
 		//
 		switch(_hott_alarm_queue[i].alarm_profile) {
+#ifdef HOTT_SIM_EAM_SENSOR
 			case HOTT_TELEMETRY_EAM_SENSOR_ID:
 				vEam |= _hott_alarm_queue[i].visual_alarm1;
 				vEam2 |= _hott_alarm_queue[i].visual_alarm2;
 				break;
+#endif
+#ifdef HOTT_SIM_GPS_SENSOR
 			case HOTT_TELEMETRY_GPS_SENSOR_ID:
 				vGps |= _hott_alarm_queue[i].visual_alarm1;
 				vGps2 |= _hott_alarm_queue[i].visual_alarm2;
 				break;
+#endif
+#ifdef HOTT_SIM_VARIO_SENSOR
 			case HOTT_TELEMETRY_VARIO_SENSOR_ID:
 				vVario |= _hott_alarm_queue[i].visual_alarm1;
 				break;
+#endif
+#ifdef HOTT_SIM_GAM_SENSOR
 			case HOTT_TELEMETRY_GAM_SENSOR_ID:
 				vGam |= _hott_alarm_queue[i].visual_alarm1;		
 				vGam2 |= _hott_alarm_queue[i].visual_alarm2;		
 				break;
+#endif
 			default:
 				break;
 		}
 	} //end: visual alarm loop
-
+#ifdef HOTT_SIM_EAM_SENSOR
 	// Set all visual alarms
 	hott_eam_msg.alarm_invers1 |= vEam;
 	hott_eam_msg.alarm_invers2 |= vEam2;
-
+#endif
+#ifdef HOTT_SIM_GAM_SENSOR
 	hott_gam_msg.alarm_invers1 |= vGam;
 	hott_gam_msg.alarm_invers2 |= vGam2;
-
+#endif
+#ifdef HOTT_SIM_VARIO_SENSOR
 	hott_vario_msg.alarm_invers1 |= vVario;
-
+#endif
+#ifdef HOTT_SIM_GPS_SENSOR
 	hott_gps_msg.alarm_invers1 |= vGps;
 	hott_gps_msg.alarm_invers2 |= vGps2;
-
+#endif
 	if(activeAlarm != 0) { //is an alarm active
 		if ( ++activeAlarmTimer % 50 == 0 ) {	//every 1sec
 			_hott_alarm_queue[activeAlarm-1].alarm_time--;
