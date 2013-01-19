@@ -10,7 +10,7 @@
 // Check project homepage at https://code.google.com/p/hott-for-ardupilot/
 //
 // 01/2013 by Adam Majerczyk (majerczyk.adam@gmail.com)
-// v0.9.5b (beta software)
+// v0.9.6b (beta software)
 //
 // Developed and tested with:
 // Transmitter MC-32 v1.030
@@ -21,12 +21,13 @@
 #ifdef HOTT_TELEMETRY
 
 #if HOTT_TELEMETRY_SERIAL_PORT == 2
-	FastSerialPort2(Serial2);      //HOTT serial port
-	#define _HOTT_PORT	Serial2
+	//FastSerialPort2(Serial2);      //HOTT serial port
+	#define _HOTT_PORT	hal.uartC
 #endif
 #if HOTT_TELEMETRY_SERIAL_PORT == 3
-	FastSerialPort3(Serial3);      //HOTT serial port
-	#define _HOTT_PORT	Serial3
+	//FastSerialPort3(Serial3);      //HOTT serial port
+	#error Not supported yet
+//	#define _HOTT_PORT	hal.uartC
 #endif
 
 #ifndef HOTT_TELEMETRY_SERIAL_PORT
@@ -54,30 +55,30 @@
 //Inc+Dec -> Set button on transmittier
 #define HOTT_TEXT_MODE_INC_DEC	        0x09
 
-static boolean _hott_telemetry_is_sending = false;
-static byte _hott_telemetry_sendig_msgs_id = 0;
+static bool _hott_telemetry_is_sending = false;
+static int8_t _hott_telemetry_sendig_msgs_id = 0;
 
 #ifdef HOTT_SIM_TEXTMODE
 #define HOTT_TEXTMODE_MSG_TEXT_LEN 168
 //Text mode msgs type
 struct HOTT_TEXTMODE_MSG {
-	byte start_byte;	//#01 constant value 0x7b
-	byte fill1;			//#02 constant value 0x00
-	byte warning_beeps;	//#03 1=A 2=B ...
-	byte msg_txt[HOTT_TEXTMODE_MSG_TEXT_LEN];	//#04 ASCII text to display to
+	int8_t start_byte;	//#01 constant value 0x7b
+	int8_t fill1;			//#02 constant value 0x00
+	int8_t warning_beeps;	//#03 1=A 2=B ...
+	int8_t msg_txt[HOTT_TEXTMODE_MSG_TEXT_LEN];	//#04 ASCII text to display to
 							// Bit 7 = 1 -> Inverse character display
                             // Display 21x8
-	byte stop_byte;		//#171 constant value 0x7d
-	byte parity;		//#172 Checksum / parity
+	int8_t stop_byte;		//#171 constant value 0x7d
+	int8_t parity;		//#172 Checksum / parity
 };
 static HOTT_TEXTMODE_MSG hott_txt_msg;
 #endif
 
 #ifdef HOTT_SIM_GAM_SENSOR
 struct HOTT_GAM_MSG {
-	byte start_byte;			//#01 start byte constant value 0x7c
-	byte gam_sensor_id; 		//#02 EAM sensort id. constat value 0x8d
-	byte warning_beeps;			//#03 1=A 2=B ... 0x1a=Z  0 = no alarm
+	int8_t start_byte;			//#01 start int8_t constant value 0x7c
+	int8_t gam_sensor_id; 		//#02 EAM sensort id. constat value 0x8d
+	int8_t warning_beeps;			//#03 1=A 2=B ... 0x1a=Z  0 = no alarm
 								// Q	Min cell voltage sensor 1
 								// R	Min Battery 1 voltage sensor 1
 								// J	Max Battery 1 voltage sensor 1
@@ -100,8 +101,8 @@ struct HOTT_GAM_MSG {
 								// T	Minimum RPM
 								// Y	Maximum RPM
 
-	byte sensor_id;	            //#04 constant value 0xd0
-	byte alarm_invers1;			//#05 alarm bitmask. Value is displayed inverted
+	int8_t sensor_id;	            //#04 constant value 0xd0
+	int8_t alarm_invers1;			//#05 alarm bitmask. Value is displayed inverted
 								//Bit#	Alarm field
 								// 0	all cell voltage
 								// 1	Battery 1
@@ -111,7 +112,7 @@ struct HOTT_GAM_MSG {
 								// 5	Fuel
 								// 6	mAh
 								// 7	Altitude
-	byte alarm_invers2;			//#06 alarm bitmask. Value is displayed inverted
+	int8_t alarm_invers2;			//#06 alarm bitmask. Value is displayed inverted
 								//Bit#	Alarm Field
 								// 0	main power current
 								// 1	main power voltage
@@ -122,46 +123,46 @@ struct HOTT_GAM_MSG {
 								// 6	unknown
 								// 7	"ON" sign/text msg active
 								
-	byte cell1;					//#07 cell 1 voltage lower value. 0.02V steps, 124=2.48V
-	byte cell2;					//#08
-	byte cell3;					//#09
-	byte cell4;					//#10
-	byte cell5;					//#11
-	byte cell6;					//#12
-	byte batt1_L;				//#13 battery 1 voltage LSB value. 0.1V steps. 50 = 5.5V
-	byte batt1_H;				//#14
-	byte batt2_L;				//#15 battery 2 voltage LSB value. 0.1V steps. 50 = 5.5V
-	byte batt2_H;				//#16
-	byte temperature1;			//#17 temperature 1. offset of 20. a value of 20 = 0°C
-	byte temperature2;			//#18 temperature 2. offset of 20. a value of 20 = 0°C
-	byte fuel_procent;			//#19 Fuel capacity in %. Values 0--100
+	int8_t cell1;					//#07 cell 1 voltage lower value. 0.02V steps, 124=2.48V
+	int8_t cell2;					//#08
+	int8_t cell3;					//#09
+	int8_t cell4;					//#10
+	int8_t cell5;					//#11
+	int8_t cell6;					//#12
+	int8_t batt1_L;				//#13 battery 1 voltage LSB value. 0.1V steps. 50 = 5.5V
+	int8_t batt1_H;				//#14
+	int8_t batt2_L;				//#15 battery 2 voltage LSB value. 0.1V steps. 50 = 5.5V
+	int8_t batt2_H;				//#16
+	int8_t temperature1;			//#17 temperature 1. offset of 20. a value of 20 = 0°C
+	int8_t temperature2;			//#18 temperature 2. offset of 20. a value of 20 = 0°C
+	int8_t fuel_procent;			//#19 Fuel capacity in %. Values 0--100
 								// graphical display ranges: 0-25% 50% 75% 100%
-	byte fuel_ml_L;				//#20 Fuel in ml scale. Full = 65535!
-	byte fuel_ml_H;				//#21
-	byte rpm_L;					//#22 RPM in 10 RPM steps. 300 = 3000rpm
-	byte rpm_H;					//#23
-	byte altitude_L;			//#24 altitude in meters. offset of 500, 500 = 0m
-	byte altitude_H;			//#25
-	byte climbrate_L;			//#26 climb rate in 0.01m/s. Value of 30000 = 0.00 m/s
-	byte climbrate_H;			//#27
-	byte climbrate3s;			//#28 climb rate in m/3sec. Value of 120 = 0m/3sec
-	byte current_L;				//#29 current in 0.1A steps
-	byte current_H;				//#30
-	byte main_voltage_L;		//#31 Main power voltage using 0.1V steps
-	byte main_voltage_H;		//#32
-	byte batt_cap_L;			//#33 used battery capacity in 10mAh steps
-	byte batt_cap_H;			//#34
-	byte speed_L;				//#35 (air?) speed in km/h(?) we are using ground speed here per default
-	byte speed_H;				//#36
-	byte min_cell_volt;			//#37 minimum cell voltage in 2mV steps. 124 = 2,48V
-	byte min_cell_volt_num;		//#38 number of the cell with the lowest voltage
-	byte rpm2_L;				//#39 RPM in 10 RPM steps. 300 = 3000rpm
-	byte rpm2_H;				//#40
-	byte general_error_number;	//#41 Voice error == 12. TODO: more docu
-	byte pressure;				//#42 Pressure up to 16bar. 0,1bar scale. 20 = 2bar
-	byte version;				//#43 version number TODO: more info?
-	byte stop_byte;				//#44 stop byte
-	byte parity;				//#45 CRC/Parity
+	int8_t fuel_ml_L;				//#20 Fuel in ml scale. Full = 65535!
+	int8_t fuel_ml_H;				//#21
+	int8_t rpm_L;					//#22 RPM in 10 RPM steps. 300 = 3000rpm
+	int8_t rpm_H;					//#23
+	int8_t altitude_L;			//#24 altitude in meters. offset of 500, 500 = 0m
+	int8_t altitude_H;			//#25
+	int8_t climbrate_L;			//#26 climb rate in 0.01m/s. Value of 30000 = 0.00 m/s
+	int8_t climbrate_H;			//#27
+	int8_t climbrate3s;			//#28 climb rate in m/3sec. Value of 120 = 0m/3sec
+	int8_t current_L;				//#29 current in 0.1A steps
+	int8_t current_H;				//#30
+	int8_t main_voltage_L;		//#31 Main power voltage using 0.1V steps
+	int8_t main_voltage_H;		//#32
+	int8_t batt_cap_L;			//#33 used battery capacity in 10mAh steps
+	int8_t batt_cap_H;			//#34
+	int8_t speed_L;				//#35 (air?) speed in km/h(?) we are using ground speed here per default
+	int8_t speed_H;				//#36
+	int8_t min_cell_volt;			//#37 minimum cell voltage in 2mV steps. 124 = 2,48V
+	int8_t min_cell_volt_num;		//#38 number of the cell with the lowest voltage
+	int8_t rpm2_L;				//#39 RPM in 10 RPM steps. 300 = 3000rpm
+	int8_t rpm2_H;				//#40
+	int8_t general_error_number;	//#41 Voice error == 12. TODO: more docu
+	int8_t pressure;				//#42 Pressure up to 16bar. 0,1bar scale. 20 = 2bar
+	int8_t version;				//#43 version number TODO: more info?
+	int8_t stop_byte;				//#44 stop int8_t
+	int8_t parity;				//#45 CRC/Parity
 };
 
 static struct HOTT_GAM_MSG hott_gam_msg;
@@ -171,9 +172,9 @@ static struct HOTT_GAM_MSG hott_gam_msg;
 #define HOTT_VARIO_MSG_TEXT_LEN	21
 
 struct HOTT_VARIO_MSG {
-	byte start_byte;			//#01 start byte constant value 0x7c
-	byte vario_sensor_id; 		//#02 VARIO sensort id. constat value 0x89
-	byte warning_beeps;			//#03 1=A 2=B ...
+	int8_t start_byte;			//#01 start int8_t constant value 0x7c
+	int8_t vario_sensor_id; 		//#02 VARIO sensort id. constat value 0x89
+	int8_t warning_beeps;			//#03 1=A 2=B ...
 								// Q	Min cell voltage sensor 1
 								// R	Min Battery 1 voltage sensor 1
 								// J	Max Battery 1 voltage sensor 1
@@ -195,29 +196,29 @@ struct HOTT_VARIO_MSG {
 								// A	m/3s negative difference
 
 
-	byte sensor_id;	            //#04 constant value 0x90
-	byte alarm_invers1;		//#05 Inverse display (alarm?) bitmask
+	int8_t sensor_id;	            //#04 constant value 0x90
+	int8_t alarm_invers1;		//#05 Inverse display (alarm?) bitmask
 								//TODO: more info
-	byte altitude_L;			//#06 Altitude low byte. In meters. A value of 500 means 0m
-	byte altitude_H;			//#07 Altitude high byte
-	byte altitude_max_L;		//#08 Max. measured altitude low byte. In meters. A value of 500 means 0m
-	byte altitude_max_H;		//#09 Max. measured altitude high byte
-	byte altitude_min_L;		//#10 Min. measured altitude low byte. In meters. A value of 500 means 0m
-	byte altitude_min_H;		//#11 Min. measured altitude high byte
-	byte climbrate_L;			//#12 Climb rate in m/s. Steps of 0.01m/s. Value of 30000 = 0.00 m/s
-	byte climbrate_H;			//#13 Climb rate in m/s
-	byte climbrate3s_L;			//#14 Climb rate in m/3s. Steps of 0.01m/3s. Value of 30000 = 0.00 m/3s
-	byte climbrate3s_H;			//#15 Climb rate m/3s low byte
-	byte climbrate10s_L;		//#16 Climb rate m/10s. Steps of 0.01m/10s. Value of 30000 = 0.00 m/10s
-	byte climbrate10s_H;		//#17 Climb rate m/10s low byte
-	byte text_msg[HOTT_VARIO_MSG_TEXT_LEN];			//#18 Free ASCII text message
-	byte free_char1;			//#39 Free ASCII character.  appears right to home distance
-	byte free_char2;			//#40 Free ASCII character.  appears right to home direction
-	byte free_char3;			//#41 Free ASCII character.  appears? TODO: Check where this char appears
-	byte compass_direction;		//#42 Compass heading in 2° steps. 1 = 2°
-	byte version;				//#43 version number TODO: more info?
-	byte stop_byte;				//#44 stop byte, constant value 0x7d
-	byte parity;				//#45 checksum / parity
+	int8_t altitude_L;			//#06 Altitude low int8_t. In meters. A value of 500 means 0m
+	int8_t altitude_H;			//#07 Altitude high int8_t
+	int8_t altitude_max_L;		//#08 Max. measured altitude low int8_t. In meters. A value of 500 means 0m
+	int8_t altitude_max_H;		//#09 Max. measured altitude high int8_t
+	int8_t altitude_min_L;		//#10 Min. measured altitude low int8_t. In meters. A value of 500 means 0m
+	int8_t altitude_min_H;		//#11 Min. measured altitude high int8_t
+	int8_t climbrate_L;			//#12 Climb rate in m/s. Steps of 0.01m/s. Value of 30000 = 0.00 m/s
+	int8_t climbrate_H;			//#13 Climb rate in m/s
+	int8_t climbrate3s_L;			//#14 Climb rate in m/3s. Steps of 0.01m/3s. Value of 30000 = 0.00 m/3s
+	int8_t climbrate3s_H;			//#15 Climb rate m/3s low int8_t
+	int8_t climbrate10s_L;		//#16 Climb rate m/10s. Steps of 0.01m/10s. Value of 30000 = 0.00 m/10s
+	int8_t climbrate10s_H;		//#17 Climb rate m/10s low int8_t
+	int8_t text_msg[HOTT_VARIO_MSG_TEXT_LEN];			//#18 Free ASCII text message
+	int8_t free_char1;			//#39 Free ASCII character.  appears right to home distance
+	int8_t free_char2;			//#40 Free ASCII character.  appears right to home direction
+	int8_t free_char3;			//#41 Free ASCII character.  appears? TODO: Check where this char appears
+	int8_t compass_direction;		//#42 Compass heading in 2° steps. 1 = 2°
+	int8_t version;				//#43 version number TODO: more info?
+	int8_t stop_byte;				//#44 stop int8_t, constant value 0x7d
+	int8_t parity;				//#45 checksum / parity
 };
 
 static HOTT_VARIO_MSG hott_vario_msg;
@@ -225,9 +226,9 @@ static HOTT_VARIO_MSG hott_vario_msg;
 
 #ifdef HOTT_SIM_EAM_SENSOR
 struct HOTT_EAM_MSG {
-	byte start_byte;			//#01 start byte
-	byte eam_sensor_id; 		//#02 EAM sensort id. constat value 0x8e
-	byte warning_beeps;			//#03 1=A 2=B ... or 'A' - 0x40 = 1
+	int8_t start_byte;			//#01 start int8_t
+	int8_t eam_sensor_id; 		//#02 EAM sensort id. constat value 0x8e
+	int8_t warning_beeps;			//#03 1=A 2=B ... or 'A' - 0x40 = 1
 								// Q	Min cell voltage sensor 1
 								// R	Min Battery 1 voltage sensor 1
 								// J	Max Battery 1 voltage sensor 1
@@ -248,8 +249,8 @@ struct HOTT_EAM_MSG {
 								// N	climb rate m/sec to high
 								// M	climb rate m/3sec to high
 								
-	byte sensor_id;	            //#04 constant value 0xe0
-	byte alarm_invers1;			//#05 alarm bitmask. Value is displayed inverted
+	int8_t sensor_id;	            //#04 constant value 0xe0
+	int8_t alarm_invers1;			//#05 alarm bitmask. Value is displayed inverted
 								//Bit#	Alarm field
 								// 0	mAh
 								// 1	Battery 1
@@ -259,7 +260,7 @@ struct HOTT_EAM_MSG {
 								// 5	Altitude
 								// 6	Current
 								// 7	Main power voltage
-	byte alarm_invers2;			//#06 alarm bitmask. Value is displayed inverted
+	int8_t alarm_invers2;			//#06 alarm bitmask. Value is displayed inverted
 								//Bit#	Alarm Field
 								// 0	m/s
 								// 1	m/3s
@@ -270,57 +271,57 @@ struct HOTT_EAM_MSG {
 								// 6	unknown/unused
 								// 7	"ON" sign/text msg active
 								
-	byte cell1_L;				//#07 cell 1 voltage lower value. 0.02V steps, 124=2.48V
-	byte cell2_L;				//#08
-	byte cell3_L;				//#09
-	byte cell4_L;				//#10
-	byte cell5_L;				//#11
-	byte cell6_L;				//#12
-	byte cell7_L;				//#13
-	byte cell1_H;				//#14 cell 1 voltage high value. 0.02V steps, 124=2.48V
-	byte cell2_H;				//#15
-	byte cell3_H;				//#16
-	byte cell4_H;				//#17
-	byte cell5_H;				//#18
-	byte cell6_H;				//#19
-	byte cell7_H;				//#20
+	int8_t cell1_L;				//#07 cell 1 voltage lower value. 0.02V steps, 124=2.48V
+	int8_t cell2_L;				//#08
+	int8_t cell3_L;				//#09
+	int8_t cell4_L;				//#10
+	int8_t cell5_L;				//#11
+	int8_t cell6_L;				//#12
+	int8_t cell7_L;				//#13
+	int8_t cell1_H;				//#14 cell 1 voltage high value. 0.02V steps, 124=2.48V
+	int8_t cell2_H;				//#15
+	int8_t cell3_H;				//#16
+	int8_t cell4_H;				//#17
+	int8_t cell5_H;				//#18
+	int8_t cell6_H;				//#19
+	int8_t cell7_H;				//#20
 	
-	byte batt1_voltage_L;		//#21 battery 1 voltage lower value. opt. cell8_L 0.02V steps
-	byte batt1_voltage_H;		//#22
+	int8_t batt1_voltage_L;		//#21 battery 1 voltage lower value. opt. cell8_L 0.02V steps
+	int8_t batt1_voltage_H;		//#22
 	
-	byte batt2_voltage_L;		//#23 battery 2 voltage lower value. opt cell8_H value-. 0.02V steps
-	byte batt2_voltage_H;		//#24
+	int8_t batt2_voltage_L;		//#23 battery 2 voltage lower value. opt cell8_H value-. 0.02V steps
+	int8_t batt2_voltage_H;		//#24
 	
-	byte temp1;					//#25 Temperature sensor 1. 0°=20, 26°=46
-	byte temp2;					//#26 temperature sensor 2
+	int8_t temp1;					//#25 Temperature sensor 1. 0°=20, 26°=46
+	int8_t temp2;					//#26 temperature sensor 2
 	
-	byte altitude_L;			//#27 Attitude lower value. unit: meters. Value of 500 = 0m
-	byte altitude_H;			//#28
+	int8_t altitude_L;			//#27 Attitude lower value. unit: meters. Value of 500 = 0m
+	int8_t altitude_H;			//#28
 	
-	byte current_L;				//#29 Current in 0.1 steps
-	byte current_H;				//#30
+	int8_t current_L;				//#29 Current in 0.1 steps
+	int8_t current_H;				//#30
 	
-	byte main_voltage_L;		//#30 Main power voltage (drive) in 0.1V steps
-	byte main_voltage_H;		//#31
+	int8_t main_voltage_L;		//#30 Main power voltage (drive) in 0.1V steps
+	int8_t main_voltage_H;		//#31
 	
-	byte batt_cap_L;			//#32 used battery capacity in 10mAh steps
-	byte batt_cap_H;			//#33
+	int8_t batt_cap_L;			//#32 used battery capacity in 10mAh steps
+	int8_t batt_cap_H;			//#33
 	
-	byte climbrate_L;			//#34 climb rate in 0.01m/s. Value of 30000 = 0.00 m/s
-	byte climbrate_H;			//#35
+	int8_t climbrate_L;			//#34 climb rate in 0.01m/s. Value of 30000 = 0.00 m/s
+	int8_t climbrate_H;			//#35
 	
-	byte climbrate3s;			//#36 climbrate in m/3sec. Value of 120 = 0m/3sec
+	int8_t climbrate3s;			//#36 climbrate in m/3sec. Value of 120 = 0m/3sec
 	
-	byte rpm_L;					//#37 RPM. Steps: 10 U/min
-	byte rpm_H;					//#38
+	int8_t rpm_L;					//#37 RPM. Steps: 10 U/min
+	int8_t rpm_H;					//#38
 	
-	byte electric_min;			//#39 Electric minutes. Time does start, when motor current is > 3 A
-	byte electric_sec;			//#40
+	int8_t electric_min;			//#39 Electric minutes. Time does start, when motor current is > 3 A
+	int8_t electric_sec;			//#40
 	
-	byte speed_L;				//#41 (air?) speed in km/h. Steps 1km/h
-	byte speed_H;				//#42
-	byte stop_byte;				//#43 stop byte
-	byte parity;				//#44 CRC/Parity
+	int8_t speed_L;				//#41 (air?) speed in km/h. Steps 1km/h
+	int8_t speed_H;				//#42
+	int8_t stop_byte;				//#43 stop int8_t
+	int8_t parity;				//#44 CRC/Parity
 };
 
 static HOTT_EAM_MSG hott_eam_msg;
@@ -329,9 +330,9 @@ static HOTT_EAM_MSG hott_eam_msg;
 #ifdef HOTT_SIM_GPS_SENSOR
 //HoTT GPS Sensor response to Receiver (?!not?! Smartbox)
 struct HOTT_GPS_MSG {
-  byte start_byte;      //#01 constant value 0x7c
-  byte gps_sensor_id;   //#02 constant value 0x8a
-  byte warning_beeps;   //#03 1=A 2=B ...
+  int8_t start_byte;      //#01 constant value 0x7c
+  int8_t gps_sensor_id;   //#02 constant value 0x8a
+  int8_t warning_beeps;   //#03 1=A 2=B ...
 						// A	Min Speed
 						// L	Max Speed
 						// O	Min Altitude
@@ -343,73 +344,73 @@ struct HOTT_GPS_MSG {
 						// D	Max home distance
 						// 
 
-  byte sensor_id;       //#04 constant (?) value 0xa0
-  byte alarm_invers1;	//#05
+  int8_t sensor_id;       //#04 constant (?) value 0xa0
+  int8_t alarm_invers1;	//#05
   						//TODO: more info
-  byte alarm_invers2;	//#06  1 = No GPS signal
+  int8_t alarm_invers2;	//#06  1 = No GPS signal
   								//TODO: more info
 
-  byte flight_direction; //#07 flight direction in 2 degreees/step (1 = 2degrees);
-  byte gps_speed_L;  //08 km/h
-  byte gps_speed_H;  //#09
+  int8_t flight_direction; //#07 flight direction in 2 degreees/step (1 = 2degrees);
+  int8_t gps_speed_L;  //08 km/h
+  int8_t gps_speed_H;  //#09
   
-  byte pos_NS;  //#10 north = 0, south = 1
-  byte pos_NS_dm_L;  //#11 degree minutes ie N48°39’988
-  byte pos_NS_dm_H;  //#12
-  byte pos_NS_sec_L; //#13 position seconds
-  byte pos_NS_sec_H;  //#14
+  int8_t pos_NS;  //#10 north = 0, south = 1
+  int8_t pos_NS_dm_L;  //#11 degree minutes ie N48°39’988
+  int8_t pos_NS_dm_H;  //#12
+  int8_t pos_NS_sec_L; //#13 position seconds
+  int8_t pos_NS_sec_H;  //#14
 
-  byte pos_EW;  //#15 east = 0, west = 1
-  byte pos_EW_dm_L; //#16 degree minutes ie. E9°25’9360
-  byte pos_EW_dm_H;  //#17
-  byte pos_EW_sec_L;  //#18 position seconds
-  byte pos_EW_sec_H;  //#19
+  int8_t pos_EW;  //#15 east = 0, west = 1
+  int8_t pos_EW_dm_L; //#16 degree minutes ie. E9°25’9360
+  int8_t pos_EW_dm_H;  //#17
+  int8_t pos_EW_sec_L;  //#18 position seconds
+  int8_t pos_EW_sec_H;  //#19
   
-  byte home_distance_L;  //#20 meters
-  byte home_distance_H;  //#21
+  int8_t home_distance_L;  //#20 meters
+  int8_t home_distance_H;  //#21
   
-  byte altitude_L; //#22 meters. Value of 500 = 0m 
-  byte altitude_H; //#23
+  int8_t altitude_L; //#22 meters. Value of 500 = 0m 
+  int8_t altitude_H; //#23
   
-  byte climbrate_L;  //#24 m/s 0.01m/s resolution. Value of 30000 = 0.00 m/s
-  byte climbrate_H;  //#25
+  int8_t climbrate_L;  //#24 m/s 0.01m/s resolution. Value of 30000 = 0.00 m/s
+  int8_t climbrate_H;  //#25
   
-  byte climbrate3s;  //#26 climbrate in m/3s resolution, value of 120 = 0 m/3s
+  int8_t climbrate3s;  //#26 climbrate in m/3s resolution, value of 120 = 0 m/3s
   
-  byte gps_satelites;  //#27 sat count
-  byte gps_fix_char; //#28 GPS fix character. display, 'D' = DGPS, '2' = 2D, '3' = 3D, '-' = no fix. Where appears this char???
+  int8_t gps_satelites;  //#27 sat count
+  int8_t gps_fix_char; //#28 GPS fix character. display, 'D' = DGPS, '2' = 2D, '3' = 3D, '-' = no fix. Where appears this char???
   
-  byte home_direction; //#29 direction from starting point to Model position (2 degree steps)
-  byte angle_roll;    //#30 angle roll in 2 degree steps
-  byte angle_nick;    //#31 angle in 2degree steps
-  byte angle_compass; //#32 angle in 2degree steps. 1 = 2°, 255 = - 2° (1 byte) North = 0°
+  int8_t home_direction; //#29 direction from starting point to Model position (2 degree steps)
+  int8_t angle_roll;    //#30 angle roll in 2 degree steps
+  int8_t angle_nick;    //#31 angle in 2degree steps
+  int8_t angle_compass; //#32 angle in 2degree steps. 1 = 2°, 255 = - 2° (1 int8_t) North = 0°
   
-  byte gps_time_h;  //#33 UTC time hours
-  byte gps_time_m;  //#34 UTC time minutes
-  byte gps_time_s;  //#35 UTC time seconds
-  byte gps_time_sss;//#36 UTC time milliseconds
+  int8_t gps_time_h;  //#33 UTC time hours
+  int8_t gps_time_m;  //#34 UTC time minutes
+  int8_t gps_time_s;  //#35 UTC time seconds
+  int8_t gps_time_sss;//#36 UTC time milliseconds
   
-  byte msl_altitude_L;  //#37 mean sea level altitude
-  byte msl_altitude_H;  //#38
+  int8_t msl_altitude_L;  //#37 mean sea level altitude
+  int8_t msl_altitude_H;  //#38
   
-  byte vibration; //#39 vibrations level in %
+  int8_t vibration; //#39 vibrations level in %
   
-  byte free_char1;  //#40 appears right to home distance
-  byte free_char2;  //#41 appears right to home direction
-  byte free_char3;  //#42 GPS ASCII D=DGPS 2=2D 3=3D -=No Fix
-  byte version;  //#43
+  int8_t free_char1;  //#40 appears right to home distance
+  int8_t free_char2;  //#41 appears right to home direction
+  int8_t free_char3;  //#42 GPS ASCII D=DGPS 2=2D 3=3D -=No Fix
+  int8_t version;  //#43
   				 // 0	GPS Graupner #33600
                  // 1	Gyro Receiver
                  // 255 Mikrokopter
-  byte end_byte;  //#44 constant value 0x7d
-  byte parity;    //#45
+  int8_t end_byte;  //#44 constant value 0x7d
+  int8_t parity;    //#45
 };
 
 static HOTT_GPS_MSG hott_gps_msg;
 #endif
 
 // HoTT serial send buffer pointer
-static byte *_hott_msg_ptr = 0;
+static int8_t *_hott_msg_ptr = 0;
 // Len of HoTT serial buffer
 static int _hott_msg_len = 0;
 
@@ -509,7 +510,7 @@ void _hott_serial_scheduler(uint32_t tnow) {
   if(_hott_msg_ptr == 0) return;   //no data to send
   if(_hott_telemetry_is_sending) {
     //we are sending already, wait for a delay of 2ms between data bytes
-    if(tnow - _hott_serial_timer < 3000)  //delay ca. 3,5 mS. 19200 baud = 520uS / Byte + 3ms required delay
+    if(tnow - _hott_serial_timer < 3000)  //delay ca. 3,5 mS. 19200 baud = 520uS / int8_t + 3ms required delay
     										// Graupner Specs claims here 2ms but in reality it's 3ms, they using 3ms too...
       return;
   } else {
@@ -538,16 +539,16 @@ void _hott_send_telemetry_data() {
     _hott_telemetry_is_sending = false;
     msg_crc = 0;
     _hott_enable_receiver();
-    _HOTT_PORT.flush();
+    _HOTT_PORT->flush();
   } else {
     --_hott_msg_len;
     if(_hott_msg_len != 0) {
        	msg_crc += *_hott_msg_ptr; 
     } else {
-    	//last byte, send crc
-	    *_hott_msg_ptr = (byte) (msg_crc);
+    	//last int8_t, send crc
+	    *_hott_msg_ptr = (int8_t) (msg_crc);
     }
-    _HOTT_PORT.write(*_hott_msg_ptr++);
+    _HOTT_PORT->write(*_hott_msg_ptr++);
   }
 }
 
@@ -555,9 +556,10 @@ void _hott_send_telemetry_data() {
   Onetime setup for HoTT
 */
 void _hott_setup() { 
-  _HOTT_PORT.begin(19200);
+  _HOTT_PORT->begin(19200);
   _hott_enable_receiver();
-  timer_scheduler.register_process(_hott_serial_scheduler);
+//  timer_scheduler.register_process(_hott_serial_scheduler);
+	hal.scheduler->register_timer_process(_hott_serial_scheduler);
   //init msgs
   _hott_msgs_init();  //set default values  
 }
@@ -569,8 +571,8 @@ static uint32_t _hott_serial_request_timer = 0;
 
 void _hott_check_serial_data(uint32_t tnow) {
 	if(_hott_telemetry_is_sending == true) return;
-    if(_HOTT_PORT.available() > 1) {
-      if(_HOTT_PORT.available() == 2) {
+    if(_HOTT_PORT->available() > 1) {
+      if(_HOTT_PORT->available() == 2) {
         if(_hott_serial_request_timer == 0) {
         	//new request, check required
         	_hott_serial_request_timer = tnow;	//save timestamp
@@ -581,8 +583,8 @@ void _hott_check_serial_data(uint32_t tnow) {
         	_hott_serial_request_timer = 0;	//clean timer
         }
         // we never reach this point if there is additionally data on bus, so is has to be valid request
-        unsigned char c = _HOTT_PORT.read();
-        unsigned char addr = _HOTT_PORT.read();
+        unsigned char c = _HOTT_PORT->read();
+        unsigned char addr = _HOTT_PORT->read();
         //ok, we have a valid request, check for address
         switch(c) {
 //*****************************************************************************
@@ -591,7 +593,7 @@ void _hott_check_serial_data(uint32_t tnow) {
            //Text mode
              {
 
-             byte tmp = (addr >> 4);
+             int8_t tmp = (addr >> 4);
 #ifdef HOTT_SIM_GPS_SENSOR
 				//GPS module text mode
              if(tmp == (HOTT_TELEMETRY_GPS_SENSOR_ID & 0x0f)) {
@@ -626,6 +628,7 @@ void _hott_check_serial_data(uint32_t tnow) {
 #endif
 //*****************************************************************************
           case HOTT_BINARY_MODE_REQUEST_ID:
+//          cliSerial->printf_P(PSTR("\nHott\n"));
 #ifdef HOTT_SIM_GPS_SENSOR
 			//GPS module binary mode
             if(addr == HOTT_TELEMETRY_GPS_SENSOR_ID) {
@@ -665,13 +668,13 @@ void _hott_check_serial_data(uint32_t tnow) {
         }
       } else {
         //ignore data from other sensors
-        _HOTT_PORT.flush();
+        _HOTT_PORT->flush();
         _hott_serial_request_timer = 0;
       }
     }
 }
 
-void _hott_send_msg(byte *buffer, int len) {
+void _hott_send_msg(int8_t *buffer, int len) {
   if(_hott_telemetry_is_sending == true) return;
   _hott_msg_ptr = buffer;
   _hott_msg_len = len;
@@ -679,21 +682,21 @@ void _hott_send_msg(byte *buffer, int len) {
 
 #ifdef HOTT_SIM_GAM_SENSOR
 void _hott_send_gam_msg() {
-	_hott_send_msg((byte *)&hott_gam_msg, sizeof(struct HOTT_GAM_MSG));
+	_hott_send_msg((int8_t *)&hott_gam_msg, sizeof(struct HOTT_GAM_MSG));
   _hott_telemetry_sendig_msgs_id = HOTT_TELEMETRY_GAM_SENSOR_ID;
 }
 #endif
 
 #ifdef HOTT_SIM_VARIO_SENSOR
 void _hott_send_vario_msg() {
-	_hott_send_msg((byte *)&hott_vario_msg, sizeof(struct HOTT_VARIO_MSG));
+	_hott_send_msg((int8_t *)&hott_vario_msg, sizeof(struct HOTT_VARIO_MSG));
 	_hott_telemetry_sendig_msgs_id = HOTT_TELEMETRY_VARIO_SENSOR_ID;
 }
 #endif
 
 #ifdef HOTT_SIM_GPS_SENSOR
 void _hott_send_gps_msg() {
-  _hott_send_msg((byte *)&hott_gps_msg, sizeof(struct HOTT_GPS_MSG));
+  _hott_send_msg((int8_t *)&hott_gps_msg, sizeof(struct HOTT_GPS_MSG));
   _hott_telemetry_sendig_msgs_id = HOTT_TELEMETRY_GPS_SENSOR_ID;
 }
 #endif
@@ -701,21 +704,21 @@ void _hott_send_gps_msg() {
 #ifdef HOTT_SIM_EAM_SENSOR
 //Send EMA sensor data
 void _hott_send_eam_msg() {
-  _hott_send_msg((byte *)&hott_eam_msg, sizeof(struct HOTT_EAM_MSG));
+  _hott_send_msg((int8_t *)&hott_eam_msg, sizeof(struct HOTT_EAM_MSG));
   _hott_telemetry_sendig_msgs_id = HOTT_TELEMETRY_EAM_SENSOR_ID;
 }
 #endif
 
 #ifdef HOTT_SIM_TEXTMODE
 void _hott_send_text_msg() {
-  _hott_send_msg((byte *)&hott_txt_msg, sizeof(struct HOTT_TEXTMODE_MSG));
+  _hott_send_msg((int8_t *)&hott_txt_msg, sizeof(struct HOTT_TEXTMODE_MSG));
   _hott_telemetry_sendig_msgs_id = HOTT_TEXT_MODE_REQUEST_ID;
 }
 #endif
 
 #ifdef HOTT_SIM_GAM_SENSOR
 void _hott_update_gam_msg() {
-	hott_gam_msg.temperature1 = (byte)((barometer.get_temperature() / 10) + 20);
+	hott_gam_msg.temperature1 = (int8_t)((barometer.get_temperature() / 10) + 20);
 	hott_gam_msg.temperature2 = 20; // 0°C
 	(int &)hott_gam_msg.altitude_L = (int)((current_loc.alt - home.alt) / 100)+500;
 	(int &)hott_gam_msg.climbrate_L = 30000 + climb_rate_actual;
@@ -740,7 +743,7 @@ void _hott_update_gam_msg() {
 void _hott_update_eam_msg() {
 	(int &)hott_eam_msg.batt1_voltage_L = (int)(0);
 	(int &)hott_eam_msg.batt2_voltage_L = (int)(0);
-	hott_eam_msg.temp1 = (byte)((barometer.get_temperature() / 10) + 20);
+	hott_eam_msg.temp1 = (int8_t)((barometer.get_temperature() / 10) + 20);
 	hott_eam_msg.temp2 = 20;	//0°
 	(int &)hott_eam_msg.altitude_L = (int)((current_loc.alt - home.alt) / 100)+500;
 	(int &)hott_eam_msg.current_L = current_amps1*10;
@@ -766,7 +769,7 @@ void _hott_update_eam_msg() {
 void _hott_update_gps_msg() { 
   // update GPS telemetry data
   (int &)hott_gps_msg.msl_altitude_L = (int)g_gps->altitude / 100;  //meters above sea level  
-  hott_gps_msg.flight_direction = (byte)(g_gps->ground_course / 200);  // in 2* steps
+  hott_gps_msg.flight_direction = (int8_t)(g_gps->ground_course / 200);  // in 2* steps
   (int &)hott_gps_msg.gps_speed_L = (int)((float)(g_gps->ground_speed * 0.036));
 
   
@@ -863,7 +866,7 @@ void _hott_update_gps_msg() {
   (int &)hott_gps_msg.climbrate_L = 30000 + climb_rate_actual;  
   hott_gps_msg.climbrate3s = 120 + (climb_rate / 100);  // 0 m/3s
   
-  hott_gps_msg.gps_satelites = (byte)g_gps->num_sats;
+  hott_gps_msg.gps_satelites = (int8_t)g_gps->num_sats;
   
   hott_gps_msg.angle_roll = ahrs.roll_sensor / 200;
   hott_gps_msg.angle_nick = ahrs.pitch_sensor / 200;
@@ -934,7 +937,7 @@ void _hott_update_vario_msg() {
           strcpy(armed,"DISAR");
 	}
 	memset(hott_vario_msg.text_msg,0x20,HOTT_VARIO_MSG_TEXT_LEN);
-	snprintf((char*)hott_vario_msg.text_msg,HOTT_VARIO_MSG_TEXT_LEN, "%s %s", &armed, &mode);
+	snprintf((char*)hott_vario_msg.text_msg,HOTT_VARIO_MSG_TEXT_LEN, "%s %s", &armed[0], &mode[0]);
 }
 #endif
 
@@ -947,7 +950,7 @@ char * _hott_invert_chars(char *str, int cnt) {
 	int len = strlen(str);
 	if((len < cnt)  && cnt > 0) len = cnt;
 	for(int i=0; i< len; i++) {
-		str[i] = (byte)(0x80 + (byte)str[i]);
+		str[i] = (int8_t)(0x80 + (int8_t)str[i]);
 	}
 	return str;
 }
@@ -962,7 +965,7 @@ char * _hott_invert_all_chars(char *str) {
 */
 void _hott_update_telemetry_data() {
   //no update while sending
-  
+
 #ifdef HOTT_SIM_GPS_SENSOR
   if(!(_hott_telemetry_is_sending && _hott_telemetry_sendig_msgs_id == HOTT_TELEMETRY_GPS_SENSOR_ID))
 	_hott_update_gps_msg();
@@ -1011,7 +1014,7 @@ static uint8_t _hott_alarm_ReplayCnt = 0;
 //
 // checks if an alarm exists in active queue
 //
-boolean _hoot_alarm_active_exists(struct _hott_alarm_event_T *alarm) {
+bool _hoot_alarm_active_exists(struct _hott_alarm_event_T *alarm) {
 	//check active alarms
 	for(uint8_t i=0; i<_hott_alarmCnt; i++) {
 		if(_hott_alarm_queue[i].alarm_num == alarm->alarm_num &&
@@ -1026,7 +1029,7 @@ boolean _hoot_alarm_active_exists(struct _hott_alarm_event_T *alarm) {
 //
 // checks if an alarm exists in replay queue
 //
-boolean _hoot_alarm_replay_exists(struct _hott_alarm_event_T *alarm) {
+bool _hoot_alarm_replay_exists(struct _hott_alarm_event_T *alarm) {
 	//check replay delay queue
 	for(uint8_t i=0; i<_hott_alarm_ReplayCnt; i++) {
 		if(_hott_alarm_replay_queue[i].alarm_num == alarm->alarm_num &&
@@ -1041,7 +1044,7 @@ boolean _hoot_alarm_replay_exists(struct _hott_alarm_event_T *alarm) {
 //
 // checks if an alarm exists
 //
-boolean _hoot_alarm_exists(struct _hott_alarm_event_T *alarm) {
+bool _hoot_alarm_exists(struct _hott_alarm_event_T *alarm) {
 	if(_hoot_alarm_active_exists(alarm))
 		return true;
 	if(_hoot_alarm_replay_exists(alarm))
