@@ -1,20 +1,16 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-// Example config file. Take a look at config.h. Any term define there can be overridden by defining it here.
-// Ordinary users should please ignore the following define.
-// APM2_BETA_HARDWARE is used to support early (September-October 2011) APM2
-// hardware which had the BMP085 barometer onboard. Only a handful of
-// developers have these boards.
-//#define APM2_BETA_HARDWARE
+// Example config file. Take a look at config.h. Any term define there can be
+// overridden by defining it here.
+
+
+// If you used to define your CONFIG_APM_HARDWARE setting here, it is no longer
+// valid! You should switch to using a HAL_BOARD flag in your local config.mk.
 
 //#define MAG_ORIENTATION		AP_COMPASS_COMPONENTS_DOWN_PINS_FORWARD
 //#define HIL_MODE				HIL_MODE_ATTITUDE
 //#define DMP_ENABLED ENABLED
 //#define SECONDARY_DMP_ENABLED ENABLED       // allows running DMP in parallel with DCM for testing purposes
-
-#define CONFIG_APM_HARDWARE APM_HARDWARE_APM2
-
-//#define CONFIG_HAL_BOARD HAL_BOARD_APM2
 
 #define FRAME_CONFIG QUAD_FRAME
 /*
@@ -54,7 +50,6 @@
 //#define MOTORS_JD850
 
 
-// agmatthews USERHOOKS
 // the choice of function names is up to the user and does not have to match these
 // uncomment these hooks and ensure there is a matching function on your "UserCode.pde" file
 //#define USERHOOK_FASTLOOP userhook_FastLoop();
@@ -73,6 +68,9 @@
 // #define LOITER_REPOSITIONING    ENABLED                         // Experimental Do Not Use
 // #define LOITER_RP               ROLL_PITCH_LOITER_PR
 
+//
+//	HoTT definitions
+//
 #define HOTT_TELEMETRY
 #define HOTT_TELEMETRY_SERIAL_PORT	2
 #define HOTT_SIM_GPS_SENSOR
@@ -80,10 +78,3 @@
 #define HOTT_SIM_VARIO_SENSOR
 #define HOTT_SIM_GAM_SENSOR
 //#define HOTT_SIM_TEXTMODE
-
-//experimental PPM watchdog!
-//#define PPM_WATCHDOG
-//Seconds before trigger fail safe
-//Set THR_FS_ACTION to 1 to trigger RTL if fail safe triggers in AUTO mode!
-//#define PPM_WATCHDOG_TRIGGER	3
-
