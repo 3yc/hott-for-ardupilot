@@ -589,41 +589,33 @@ void _hott_check_serial_data(uint32_t tnow) {
         switch(c) {
 //*****************************************************************************
 #ifdef HOTT_SIM_TEXTMODE
-          case HOTT_TEXT_MODE_REQUEST_ID:
+            case HOTT_TEXT_MODE_REQUEST_ID:
            //Text mode
              {
+		hott_txt_msg.start_byte = 0x7b;
+	        hott_txt_msg.stop_byte = 0x7d;
+		uint8_t tmp = (addr >> 4);  // Sensor type
 
-             int8_t tmp = (addr >> 4);
 #ifdef HOTT_SIM_GPS_SENSOR
-				//GPS module text mode
-             if(tmp == (HOTT_TELEMETRY_GPS_SENSOR_ID & 0x0f)) {
-               memset((char *)&hott_txt_msg.msg_txt[3*21], 0x20, 21); //clear line
-               sprintf((char *)&hott_txt_msg.msg_txt[3*21],_hott_invert_all_chars("GPS sensor module"));
-               _hott_send_text_msg();	//send message
-             }
 #endif
+
 #ifdef HOTT_SIM_EAM_SENSOR
-             if(tmp == (HOTT_TELEMETRY_EAM_SENSOR_ID & 0x0f)) {
-               memset((char *)&hott_txt_msg.msg_txt[3*21], 0x20, 21); //clear line
-               sprintf((char *)&hott_txt_msg.msg_txt[3*21],_hott_invert_all_chars("EAM sensor module"));
-               _hott_send_text_msg();	//send message
+
+             if(tmp == (HOTT_TELEMETRY_EAM_SENSOR_ID & 0x0f))   {
+               HOTT_Clear_Text_Screen();
+               HOTT_HandleTextMode(addr); 
+               _hott_send_text_msg();   //send message
              }
+
 #endif
 #ifdef HOTT_SIM_VARIO_SENSOR
-             if(tmp == (HOTT_TELEMETRY_VARIO_SENSOR_ID & 0x0f)) {
-               memset((char *)&hott_txt_msg.msg_txt[3*21], 0x20, 21); //clear line
-               sprintf((char *)&hott_txt_msg.msg_txt[3*21],_hott_invert_all_chars("VARIO sensor module"));
-               _hott_send_text_msg();	//send message
-             }
 #endif
 #ifdef HOTT_SIM_GAM_SENSOR
-             if(tmp == (HOTT_TELEMETRY_GAM_SENSOR_ID & 0x0f)) {
-               memset((char *)&hott_txt_msg.msg_txt[3*21], 0x20, 21); //clear line
-               sprintf((char *)&hott_txt_msg.msg_txt[3*21],_hott_invert_all_chars("GAM sensor module"));
-               _hott_send_text_msg();	//send message
-             }
 #endif
+            
+             
            }
+
            break;
 #endif
 //*****************************************************************************

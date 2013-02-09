@@ -12,7 +12,7 @@
 //#define DMP_ENABLED ENABLED
 //#define SECONDARY_DMP_ENABLED ENABLED       // allows running DMP in parallel with DCM for testing purposes
 
-#define FRAME_CONFIG QUAD_FRAME
+#define FRAME_CONFIG Y6_FRAME
 /*
  *  options:
  *  QUAD_FRAME
@@ -75,6 +75,7 @@
 #define HOTT_TELEMETRY_SERIAL_PORT	2
 #define HOTT_SIM_GPS_SENSOR
 #define HOTT_SIM_EAM_SENSOR
-#define HOTT_SIM_VARIO_SENSOR
-#define HOTT_SIM_GAM_SENSOR
-//#define HOTT_SIM_TEXTMODE
+//#define HOTT_SIM_VARIO_SENSOR
+//#define HOTT_SIM_GAM_SENSOR
+#define HOTT_SIM_TEXTMODE
+#define HOTT_TEXT_MODE_DEBUG
