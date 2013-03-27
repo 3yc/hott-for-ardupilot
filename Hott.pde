@@ -10,7 +10,7 @@
 // Check project homepage at https://code.google.com/p/hott-for-ardupilot/
 //
 // 01/2013 by Adam Majerczyk (majerczyk.adam@gmail.com)
-// v0.9.6b (beta software)
+// v0.9.7b (beta software)
 //
 // Developed and tested with:
 // Transmitter MC-32 v1.030
@@ -558,7 +558,7 @@ void _hott_send_telemetry_data() {
 void _hott_setup() { 
   _HOTT_PORT->begin(19200);
   _hott_enable_receiver();
-//  timer_scheduler.register_process(_hott_serial_scheduler);
+//check AVR_SCHEDULER_MAX_TIMER_PROCS
 	hal.scheduler->register_timer_process(_hott_serial_scheduler);
   //init msgs
   _hott_msgs_init();  //set default values  
@@ -592,10 +592,9 @@ void _hott_check_serial_data(uint32_t tnow) {
             case HOTT_TEXT_MODE_REQUEST_ID:
            //Text mode
              {
-		hott_txt_msg.start_byte = 0x7b;
-	        hott_txt_msg.stop_byte = 0x7d;
-		uint8_t tmp = (addr >> 4);  // Sensor type
-
+				hott_txt_msg.start_byte = 0x7b;
+		        hott_txt_msg.stop_byte = 0x7d;
+				uint8_t tmp = (addr >> 4);  // Sensor type
 #ifdef HOTT_SIM_GPS_SENSOR
 #endif
 
@@ -713,7 +712,7 @@ void _hott_update_gam_msg() {
 	hott_gam_msg.temperature1 = (int8_t)((barometer.get_temperature() / 10) + 20);
 	hott_gam_msg.temperature2 = 20; // 0°C
 	(int &)hott_gam_msg.altitude_L = (int)((current_loc.alt - home.alt) / 100)+500;
-	(int &)hott_gam_msg.climbrate_L = 30000 + climb_rate_actual;
+	(int &)hott_gam_msg.climbrate_L = 30000 + climb_rate;
 	hott_gam_msg.climbrate3s = 120 + (climb_rate / 100);  // 0 m/3s using filtered data here
 	(int &)hott_gam_msg.current_L = current_amps1*10;
 	(int &)hott_gam_msg.main_voltage_L = (int)(battery_voltage1 * 10.0);
@@ -743,7 +742,7 @@ void _hott_update_eam_msg() {
 	(int &)hott_eam_msg.batt_cap_L = current_total1 / 10;
 	(int &)hott_eam_msg.speed_L = (int)((float)(g_gps->ground_speed * 0.036));
 
-  	(int &)hott_eam_msg.climbrate_L = 30000 + climb_rate_actual;  
+  	(int &)hott_eam_msg.climbrate_L = 30000 + climb_rate;  
   	hott_eam_msg.climbrate3s = 120 + (climb_rate / 100);  // 0 m/3s using filtered data here
   	
     //display ON when motors are armed
@@ -765,7 +764,7 @@ void _hott_update_gps_msg() {
   (int &)hott_gps_msg.gps_speed_L = (int)((float)(g_gps->ground_speed * 0.036));
 
   
-  if(g_gps->status() == GPS::GPS_OK) {
+  if(g_gps->status() == GPS::GPS_OK_FIX_3D) {
     hott_gps_msg.alarm_invers2 = 0;
     hott_gps_msg.gps_fix_char = '3';  
     hott_gps_msg.free_char3 = '3';  //3D Fix according to specs...
@@ -855,7 +854,7 @@ void _hott_update_gps_msg() {
   
   (int &)hott_gps_msg.altitude_L = (int)((current_loc.alt - home.alt) / 100)+500;  //meters above ground
 
-  (int &)hott_gps_msg.climbrate_L = 30000 + climb_rate_actual;  
+  (int &)hott_gps_msg.climbrate_L = 30000 + climb_rate;  
   hott_gps_msg.climbrate3s = 120 + (climb_rate / 100);  // 0 m/3s
   
   hott_gps_msg.gps_satelites = (int8_t)g_gps->num_sats;
@@ -910,7 +909,7 @@ void _hott_update_vario_msg() {
 		_hott_min_altitude = (current_loc.alt - home.alt);
 	(int &)hott_vario_msg.altitude_min_L = (int)(_hott_min_altitude / 100)+500;
 	
-	(int &)hott_vario_msg.climbrate_L = 30000 + climb_rate_actual;
+	(int &)hott_vario_msg.climbrate_L = 30000 + climb_rate;
 	(int &)hott_vario_msg.climbrate3s_L = 30000 + climb_rate;	//using filtered data here
 	(int &)hott_vario_msg.climbrate10s_L = 30000;	//TODO: calc this stuff
 	
@@ -1169,8 +1168,10 @@ void _hott_alarm_scheduler() {
 	uint8_t vVario = 0;
 	uint8_t vGps = 0;
 	uint8_t vGps2 = 0;
+#ifdef HOTT_SIM_GAM_SENSOR
 	uint8_t vGam = 0;
 	uint8_t vGam2 = 0;
+#endif
 	
 	for(uint8_t i = 0; i< _hott_alarmCnt; i++) {
 		if(_hott_alarm_queue[i].alarm_time == 0) {
@@ -1259,7 +1260,7 @@ void _hott_alarm_scheduler() {
 //
 void _hott_eam_check_mAh() {
 	_hott_alarm_event _hott_ema_alarm_event;
-	if( (g.battery_monitoring == 4) && (g.pack_capacity - current_total1) <= 0.0) {
+	if( (g.battery_monitoring == 4) && (g.pack_capacity <= (int16_t)current_total1)) {
 		_hott_ema_alarm_event.alarm_time = 6;	//1sec units
 		_hott_ema_alarm_event.alarm_time_replay = 15;	//1sec units
 		_hott_ema_alarm_event.visual_alarm1 = 0x01;	//blink mAh
