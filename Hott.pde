@@ -10,10 +10,11 @@
 // Check project homepage at https://code.google.com/p/hott-for-ardupilot/
 //
 // 01/2013 by Adam Majerczyk (majerczyk.adam@gmail.com)
+// Texmode add-on by Michi (mamaretti32@gmail.com)
 // v0.9.7b (beta software)
 //
 // Developed and tested with:
-// Transmitter MC-32 v1.030
+// Transmitter MC-32 (v1.030), MX-20, MC-20
 // Receiver GR-16 v6a10_f9
 // Receiver GR-12 v3a40_e9
 //
@@ -47,13 +48,7 @@
 //Graupner #33601 Vario Module
 #define HOTT_TELEMETRY_VARIO_SENSOR_ID	0x89
 
-//Textmode key codes
-#define HOTT_TEXT_MODE_ESC		0x07
-#define HOTT_TEXT_MODE_INC		0x0D
-#define HOTT_TEXT_MODE_DEC		0x0B
-#define HOTT_TEXT_MODE_ENTER	        0x0E
-//Inc+Dec -> Set button on transmittier
-#define HOTT_TEXT_MODE_INC_DEC	        0x09
+
 
 static bool _hott_telemetry_is_sending = false;
 static int8_t _hott_telemetry_sendig_msgs_id = 0;
@@ -488,11 +483,6 @@ void _hott_msgs_init() {
   hott_txt_msg.fill1 = 0x00;
   hott_txt_msg.warning_beeps = 0x00;
   hott_txt_msg.stop_byte = 0x7d;
-
-  sprintf((char *)hott_txt_msg.msg_txt,"%s",THISFIRMWARE);
-  sprintf((char *)&hott_txt_msg.msg_txt[1*21],"by Adam Majerczyk");
-  sprintf((char *)&hott_txt_msg.msg_txt[2*21],"adam@3yc.de");
-  sprintf((char *)&hott_txt_msg.msg_txt[4*21],"more to come!");
 #endif
 }
 
@@ -592,13 +582,20 @@ void _hott_check_serial_data(uint32_t tnow) {
             case HOTT_TEXT_MODE_REQUEST_ID:
            //Text mode
              {
-				hott_txt_msg.start_byte = 0x7b;
-		        hott_txt_msg.stop_byte = 0x7d;
-				uint8_t tmp = (addr >> 4);  // Sensor type
-#ifdef HOTT_SIM_GPS_SENSOR
+		hott_txt_msg.start_byte = 0x7b;
+		hott_txt_msg.stop_byte = 0x7d;
+		uint8_t tmp = (addr >> 4);  // Sensor type
+
+
+#ifdef HOTT_SIM_GPS_TEXTMODE
+             if(tmp == (HOTT_TELEMETRY_GPS_SENSOR_ID & 0x0f))   {
+               HOTT_Clear_Text_Screen();
+               HOTT_HandleTextMode(addr); 
+               _hott_send_text_msg();   //send message
+             }
 #endif
 
-#ifdef HOTT_SIM_EAM_SENSOR
+#ifdef HOTT_SIM_EAM_TEXTMODE
 
              if(tmp == (HOTT_TELEMETRY_EAM_SENSOR_ID & 0x0f))   {
                HOTT_Clear_Text_Screen();
@@ -607,9 +604,19 @@ void _hott_check_serial_data(uint32_t tnow) {
              }
 
 #endif
-#ifdef HOTT_SIM_VARIO_SENSOR
+#ifdef HOTT_SIM_VARIO_TEXTMODE
+             if(tmp == (HOTT_TELEMETRY_VARIO_SENSOR_ID & 0x0f))   {
+               HOTT_Clear_Text_Screen();
+               HOTT_HandleTextMode(addr); 
+               _hott_send_text_msg();   //send message
+             }
 #endif
-#ifdef HOTT_SIM_GAM_SENSOR
+#ifdef HOTT_SIM_GAM_TEXTMODE
+             if(tmp == (HOTT_TELEMETRY_GAM_SENSOR_ID & 0x0f))   {
+               HOTT_Clear_Text_Screen();
+               HOTT_HandleTextMode(addr); 
+               _hott_send_text_msg();   //send message
+             }
 #endif
             
              
