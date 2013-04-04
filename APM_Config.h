@@ -68,6 +68,9 @@
 // #define LOITER_REPOSITIONING    ENABLED                         // Experimental Do Not Use
 // #define LOITER_RP               ROLL_PITCH_LOITER_PR
 
+
+
+
 //
 //	HoTT definitions
 //
@@ -77,5 +80,14 @@
 #define HOTT_SIM_EAM_SENSOR
 //#define HOTT_SIM_VARIO_SENSOR
 //#define HOTT_SIM_GAM_SENSOR
+
+
 #define HOTT_SIM_TEXTMODE
-#define HOTT_TEXT_MODE_DEBUG
+//#define HOTT_SIM_GPS_TEXTMODE
+#define HOTT_SIM_EAM_TEXTMODE
+//#define HOTT_SIM_VARIO_TEXTMODE
+//#define HOTT_SIM_GAM_TEXTMODE
+
+#define HOTT_TEXT_MODE_DEBUG // useful to display memory and sat_count in last line
+
+
