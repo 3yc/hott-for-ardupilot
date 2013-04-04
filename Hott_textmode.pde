@@ -1,3 +1,5 @@
+
+
 #ifdef HOTT_TELEMETRY
 #ifdef HOTT_SIM_TEXTMODE
 
@@ -12,14 +14,8 @@
 
 
 
-//extern struct HOTT_TEXTMODE_MSG	*hott_txt_msg =	(struct HOTT_TEXTMODE_MSG *)&_hott_serial_buffer[0];
 
 
-
-//#define HOTT_TEXT_MODE_DEBUG 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
-//++++++++++++++++++++++++++++++++++++++++++++++++++ textmode implemation           +++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -95,6 +91,7 @@ const HOTTMENU settings[] PROGMEM = {
         {_RATE_YAW_I,         true,      0.001},
         {_RATE_YAW_D,         true,      0.0001},
         {_RATE_YAW_IMAX,      true,      10},
+        
         
 //        {_STB_RLL_P,          true,      0.1},
 //        {_STB_RLL_IMAX,       true,      10},
@@ -467,12 +464,13 @@ void  HOTT_HandleTextMode(uint8_t addr) {
     //////// title
     HOTT_PrintWord_P(0, PSTR("APM_HOTT"),0);
     
+    
     //////// armed    
     
     if (motors.armed()) {
       HOTT_PrintWord_P(9, PSTR("armed"),1 );
     } else {
-      HOTT_PrintWord_P(9, PSTR("     "),0 );
+      HOTT_PrintWord_P(9, PSTR("off  "),0 );
     }
 
     //////// Pagination
@@ -517,10 +515,12 @@ void  HOTT_HandleTextMode(uint8_t addr) {
       
     } else {
           // CREDITS
-          HOTT_PrintWord_P((21*2), PSTR(THISFIRMWARE),0 );
-          HOTT_PrintWord_P((21*3), PSTR("by Adam Majerczyk") ,0 );
-          HOTT_PrintWord_P((21*4), PSTR("adam@3yc.de") ,0 );
-          HOTT_PrintWord_P((21*5), PSTR("michi was here! ;)") ,0 );
+          HOTT_PrintWord_P((21*1), PSTR(THISFIRMWARE),0 );
+          HOTT_PrintWord_P((21*3), PSTR("------ CREDTIS ------") ,0 );
+          HOTT_PrintWord_P((21*3), PSTR("  by Adam Majerczyk  ") ,0 );
+          HOTT_PrintWord_P((21*4), PSTR("     adam@3yc.de     ") ,0 );
+          HOTT_PrintWord_P((21*5), PSTR("  Textmode by Michi  ") ,0 );
+          HOTT_PrintWord_P((21*6), PSTR("mamaretti32@gmail.com") ,0 );
     }
 
       
@@ -637,19 +637,31 @@ void  HOTT_HandleTextMode(uint8_t addr) {
     //+++++++++++++++++++++++++++++++++++++++++++++++++++HOTT_TEXT_MODE_DEBUG++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
     
     
-    HOTT_PrintWord_P((21*7), PSTR("++++ be careful! ++++") ,0 );
+    
     
     #ifdef HOTT_TEXT_MODE_DEBUG
-    
+      
+      
+      /// Display Ram usage   
       extern unsigned __brkval;
       extern unsigned char __heap_start;
       
       char mem_buf[21];
-      snprintf(mem_buf, 21, "F.RAM: %u / %u", (uint16_t)(SP - __brkval), (uint16_t)(SP - (uint16_t)&__heap_start));
+      snprintf(mem_buf, 21, "F.RAM: %u/%u", (uint16_t)(SP - __brkval), (uint16_t)(SP - (uint16_t)&__heap_start));
       HOTT_PrintWord((21*7)+0, mem_buf , 0 );
-     
-     
-    #endif // debug
+          
+
+      /// Display Satcount  
+      char sat_buf[2];
+      sprintf(sat_buf,"s:%d",(int8_t)g_gps->num_sats);
+      if(g_gps->status() == GPS::GPS_OK_FIX_3D) {
+        HOTT_PrintWord((21*7)+17, sat_buf , 0 );
+      } else {
+        HOTT_PrintWord((21*7)+17, sat_buf , 1 );
+      }
+ 
+    
+    #endif
     
     
     //+++++++++++++++++++++++++++++++++++++++++++++++++++ END HOTT_TEXT_MODE_DEBUG++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
