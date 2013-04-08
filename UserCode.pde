@@ -12,6 +12,8 @@ void userhook_50Hz()
 {
   // put your 50Hz code here
 #ifdef HOTT_TELEMETRY
-  _hott_update_telemetry_data();
+	_hoot_check_alarm();
+	_hott_alarm_scheduler();
+	_hott_update_replay_queue();
 #endif
 }

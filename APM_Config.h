@@ -8,11 +8,11 @@
 // valid! You should switch to using a HAL_BOARD flag in your local config.mk.
 
 //#define MAG_ORIENTATION		AP_COMPASS_COMPONENTS_DOWN_PINS_FORWARD
-//#define HIL_MODE				HIL_MODE_ATTITUDE
+//#define HIL_MODE				HIL_MODE_SENSORS
 //#define DMP_ENABLED ENABLED
 //#define SECONDARY_DMP_ENABLED ENABLED       // allows running DMP in parallel with DCM for testing purposes
 
-#define FRAME_CONFIG Y6_FRAME
+#define FRAME_CONFIG HEXA_FRAME
 /*
  *  options:
  *  QUAD_FRAME
@@ -24,14 +24,14 @@
  *  HELI_FRAME
  */
 
-#define FRAME_ORIENTATION X_FRAME
+#define FRAME_ORIENTATION PLUS_FRAME
 /*
  *  PLUS_FRAME
  *  X_FRAME
  *  V_FRAME
  */
 
-//#define CH7_OPTION		CH7_SAVE_WP
+#define CH7_OPTION		CH7_DO_NOTHING
 /*
  *  CH7_DO_NOTHING
  *  CH7_FLIP
@@ -43,8 +43,7 @@
  */
 
 // Inertia based contollers
-//#define INERTIAL_NAV_XY ENABLED
-#define INERTIAL_NAV_Z ENABLED
+#define RTL_YAW YAW_HOLD
 
 //#define MOTORS_JD880
 //#define MOTORS_JD850
@@ -68,9 +67,6 @@
 // #define LOITER_REPOSITIONING    ENABLED                         // Experimental Do Not Use
 // #define LOITER_RP               ROLL_PITCH_LOITER_PR
 
-
-
-
 //
 //	HoTT definitions
 //
@@ -78,16 +74,8 @@
 #define HOTT_TELEMETRY_SERIAL_PORT	2
 #define HOTT_SIM_GPS_SENSOR
 #define HOTT_SIM_EAM_SENSOR
-//#define HOTT_SIM_VARIO_SENSOR
+#define HOTT_SIM_VARIO_SENSOR
 //#define HOTT_SIM_GAM_SENSOR
-
-
 #define HOTT_SIM_TEXTMODE
-//#define HOTT_SIM_GPS_TEXTMODE
-#define HOTT_SIM_EAM_TEXTMODE
-//#define HOTT_SIM_VARIO_TEXTMODE
-//#define HOTT_SIM_GAM_TEXTMODE
-
-#define HOTT_TEXT_MODE_DEBUG // useful to display memory and sat_count in last line
-
-
+//Textmode address to simulate
+#define HOTT_SIM_TEXTMODE_ADDRESS	HOTT_TELEMETRY_GPS_SENSOR_ID

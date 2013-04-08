@@ -12,12 +12,6 @@
 #define HOTT_TEXT_MODE_INC_DEC	        0x09
 #define HOTT_TEXT_MODE_NIL              0x0F
 
-
-
-
-
-
-
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Defines structure of Parameter_list
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,17 +163,6 @@ uint8_t getposition_ch6_menu(uint8_t value) {
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-//  clears the text block
-
-void HOTT_Clear_Text_Screen() {
-   memset(hott_txt_msg.msg_txt, 0x20, sizeof(hott_txt_msg.msg_txt));
-  
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Printing to Textframe
 
@@ -187,8 +170,8 @@ void  HOTT_PrintWord(uint8_t pos,  char *w, bool inverted) {
   for (uint8_t index = 0; ; index++) {
     if (w[index] == 0x0) {
       break;
-    } else { 
-      hott_txt_msg.msg_txt[index+pos] = inverted ? w[index] +128: w[index];
+    } else {
+      ((struct HOTT_TEXTMODE_MSG *)_hott_serial_buffer)->msg_txt[index+pos] = inverted ? w[index] +128: w[index];
     }
   }
 
@@ -199,7 +182,7 @@ void  HOTT_PrintWord_P(uint8_t pos,   prog_char_t *w, bool inverted) {
     if (pgm_read_byte(&w[index]) == 0x0) {
       break;
     } else { 
-      hott_txt_msg.msg_txt[index+pos] = inverted ? pgm_read_byte(&w[index]) +128: pgm_read_byte(&w[index]);
+      ((struct HOTT_TEXTMODE_MSG *)_hott_serial_buffer)->msg_txt[index+pos] = inverted ? pgm_read_byte(&w[index]) +128: pgm_read_byte(&w[index]);
     }
   }
 
@@ -427,12 +410,6 @@ void  HOTT_ParamSettings(uint8_t page, int8_t selectedRow, int8_t editRow, float
  
 }
 
-
-
-
-
-
-
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // TExtmode hande keys and funktions
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -442,9 +419,9 @@ void  HOTT_HandleTextMode(uint8_t addr) {
 
     uint8_t sensor   = (addr >> 4);   // 0xE0
     uint8_t key      = (addr & 0x0f);
-    hott_txt_msg.fill1 = sensor;
-    HOTT_Clear_Text_Screen();
     
+    ((struct HOTT_TEXTMODE_MSG *)_hott_serial_buffer)->fill1 = sensor;
+//    memset(((struct HOTT_TEXTMODE_MSG *)_hott_serial_buffer)->msg_txt, 0x20, HOTT_TEXTMODE_MSG_TEXT_LEN);    
 
   //if (!f.ARMED) {    
     static uint8_t     row = 0;  // equal to Parameter list == first
@@ -494,11 +471,6 @@ void  HOTT_HandleTextMode(uint8_t addr) {
     t = max_pages +0x30;	//works up to 9 max!
     HOTT_PrintWord(17,(char *)&t ,0 );
 
-
-    
-       
-   
-    
     /// Page content  
    
     if(page < max_pages) {
@@ -523,11 +495,7 @@ void  HOTT_HandleTextMode(uint8_t addr) {
           HOTT_PrintWord_P((21*6), PSTR("mamaretti32@gmail.com") ,0 );
     }
 
-      
-      
-      
-          
-      if( editmode ) {
+    if( editmode ) {
             
                      switch (key) {
                       
@@ -669,10 +637,10 @@ void  HOTT_HandleTextMode(uint8_t addr) {
     
 
     if (page < 1) {
-      hott_txt_msg.fill1 = 0x01;
+      ((struct HOTT_TEXTMODE_MSG *)_hott_serial_buffer)->fill1 = 0x01;
       page = 1;
     } else {
-      hott_txt_msg.fill1 = sensor;
+      ((struct HOTT_TEXTMODE_MSG *)_hott_serial_buffer)->fill1 = sensor;
     }
 
 }
