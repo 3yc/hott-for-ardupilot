@@ -11,10 +11,10 @@
 //
 // 01/2013 by Adam Majerczyk (majerczyk.adam@gmail.com)
 // Texmode add-on by Michi (mamaretti32@gmail.com)
-// v0.9.7b (beta software)
+// v0.9.7.1b (beta software)
 //
 // Developed and tested with:
-// Transmitter MC-32 (v1.030), MX-20, MC-20
+// Transmitter MC-32 (v1.030,v1.041), MX-20, MC-20
 // Receiver GR-16 v6a10_f9
 // Receiver GR-12 v3a40_e9
 //
@@ -64,7 +64,7 @@ struct HOTT_TEXTMODE_MSG {
 							// Bit 7 = 1 -> Inverse character display
                             // Display 21x8
 	int8_t stop_byte;		//#171 constant value 0x7d
-	int8_t parity;		//#172 Checksum / parity
+//	int8_t parity;		//#172 Checksum / parity
 };
 static HOTT_TEXTMODE_MSG hott_txt_msg;
 #endif
@@ -157,7 +157,7 @@ struct HOTT_GAM_MSG {
 	int8_t pressure;				//#42 Pressure up to 16bar. 0,1bar scale. 20 = 2bar
 	int8_t version;				//#43 version number TODO: more info?
 	int8_t stop_byte;				//#44 stop int8_t
-	int8_t parity;				//#45 CRC/Parity
+//	int8_t parity;				//#45 CRC/Parity
 };
 
 static struct HOTT_GAM_MSG hott_gam_msg;
@@ -213,7 +213,7 @@ struct HOTT_VARIO_MSG {
 	int8_t compass_direction;		//#42 Compass heading in 2° steps. 1 = 2°
 	int8_t version;				//#43 version number TODO: more info?
 	int8_t stop_byte;				//#44 stop int8_t, constant value 0x7d
-	int8_t parity;				//#45 checksum / parity
+//	int8_t parity;				//#45 checksum / parity
 };
 
 static HOTT_VARIO_MSG hott_vario_msg;
@@ -316,7 +316,7 @@ struct HOTT_EAM_MSG {
 	int8_t speed_L;				//#41 (air?) speed in km/h. Steps 1km/h
 	int8_t speed_H;				//#42
 	int8_t stop_byte;				//#43 stop int8_t
-	int8_t parity;				//#44 CRC/Parity
+//	int8_t parity;				//#44 CRC/Parity
 };
 
 static HOTT_EAM_MSG hott_eam_msg;
@@ -398,7 +398,7 @@ struct HOTT_GPS_MSG {
                  // 1	Gyro Receiver
                  // 255 Mikrokopter
   int8_t end_byte;  //#44 constant value 0x7d
-  int8_t parity;    //#45
+//  int8_t parity;    //#45
 };
 
 static HOTT_GPS_MSG hott_gps_msg;
@@ -489,13 +489,13 @@ void _hott_msgs_init() {
 /*
   called by timer_scheduler
 */
-static uint32_t _hott_serial_timer;
 /*
   Called periodically (≈1ms) by timer scheduler
   
   @param tnow  timestamp in uSecond
 */
 void _hott_serial_scheduler(uint32_t tnow) {
+	static uint32_t _hott_serial_timer;
    _hott_check_serial_data(tnow);	// Check for data request
   if(_hott_msg_ptr == 0) return;   //no data to send
   if(_hott_telemetry_is_sending) {
@@ -534,11 +534,11 @@ void _hott_send_telemetry_data() {
     --_hott_msg_len;
     if(_hott_msg_len != 0) {
        	msg_crc += *_hott_msg_ptr; 
+	    _HOTT_PORT->write(*_hott_msg_ptr++);
     } else {
     	//last int8_t, send crc
-	    *_hott_msg_ptr = (int8_t) (msg_crc);
+	    _HOTT_PORT->write((int8_t) (msg_crc));
     }
-    _HOTT_PORT->write(*_hott_msg_ptr++);
   }
 }
 
@@ -557,9 +557,9 @@ void _hott_setup() {
 /*
   Check for a valid HoTT requests on serial bus
 */
-static uint32_t _hott_serial_request_timer = 0;
 
 void _hott_check_serial_data(uint32_t tnow) {
+	static uint32_t _hott_serial_request_timer = 0;
 	if(_hott_telemetry_is_sending == true) return;
     if(_HOTT_PORT->available() > 1) {
       if(_HOTT_PORT->available() == 2) {
@@ -580,48 +580,18 @@ void _hott_check_serial_data(uint32_t tnow) {
 //*****************************************************************************
 #ifdef HOTT_SIM_TEXTMODE
             case HOTT_TEXT_MODE_REQUEST_ID:
-           //Text mode
-             {
-		hott_txt_msg.start_byte = 0x7b;
-		hott_txt_msg.stop_byte = 0x7d;
-		uint8_t tmp = (addr >> 4);  // Sensor type
-
-
-#ifdef HOTT_SIM_GPS_TEXTMODE
-             if(tmp == (HOTT_TELEMETRY_GPS_SENSOR_ID & 0x0f))   {
-               HOTT_Clear_Text_Screen();
-               HOTT_HandleTextMode(addr); 
-               _hott_send_text_msg();   //send message
-             }
-#endif
-
-#ifdef HOTT_SIM_EAM_TEXTMODE
-
-             if(tmp == (HOTT_TELEMETRY_EAM_SENSOR_ID & 0x0f))   {
-               HOTT_Clear_Text_Screen();
-               HOTT_HandleTextMode(addr); 
-               _hott_send_text_msg();   //send message
-             }
-
-#endif
-#ifdef HOTT_SIM_VARIO_TEXTMODE
-             if(tmp == (HOTT_TELEMETRY_VARIO_SENSOR_ID & 0x0f))   {
-               HOTT_Clear_Text_Screen();
-               HOTT_HandleTextMode(addr); 
-               _hott_send_text_msg();   //send message
-             }
-#endif
-#ifdef HOTT_SIM_GAM_TEXTMODE
-             if(tmp == (HOTT_TELEMETRY_GAM_SENSOR_ID & 0x0f))   {
-               HOTT_Clear_Text_Screen();
-               HOTT_HandleTextMode(addr); 
-               _hott_send_text_msg();   //send message
-             }
-#endif
-            
-             
+           //Text mode, handle only if not armed!
+           if(!motors.armed())
+           {
+				hott_txt_msg.start_byte = 0x7b;
+				hott_txt_msg.stop_byte = 0x7d;
+				uint8_t tmp = (addr >> 4);  // Sensor type
+				if(tmp == (HOTT_SIM_TEXTMODE_ADDRESS & 0x0f))   {
+					HOTT_Clear_Text_Screen();
+					HOTT_HandleTextMode(addr); 
+					_hott_send_text_msg();   //send message
+				}
            }
-
            break;
 #endif
 //*****************************************************************************
@@ -630,28 +600,24 @@ void _hott_check_serial_data(uint32_t tnow) {
 #ifdef HOTT_SIM_GPS_SENSOR
 			//GPS module binary mode
             if(addr == HOTT_TELEMETRY_GPS_SENSOR_ID) {
-//            Serial.printf("\n%ld: REQ_GPS",micros() / 1000);
               _hott_send_gps_msg();
               break;
             }
 #endif
 #ifdef HOTT_SIM_EAM_SENSOR
             if(addr == HOTT_TELEMETRY_EAM_SENSOR_ID) {
-//            Serial.printf("\n%ld: REQ_EAM",micros() / 1000);
 		      _hott_send_eam_msg();
               break;
 		    }
 #endif
 #ifdef HOTT_SIM_VARIO_SENSOR
             if(addr == HOTT_TELEMETRY_VARIO_SENSOR_ID) {
-//            Serial.printf("\n%ld: REQ_VARIO",micros() / 1000);
 		      _hott_send_vario_msg();
               break;
 		    }
 #endif
 #ifdef HOTT_SIM_GAM_SENSOR
             if(addr == HOTT_TELEMETRY_GAM_SENSOR_ID) {
-//            Serial.printf("\n%ld: REQ_GAM",micros() / 1000);
 		      _hott_send_gam_msg();
               break;
 		    }
@@ -661,7 +627,6 @@ void _hott_check_serial_data(uint32_t tnow) {
            break;
 //*****************************************************************************         
           default:
-            //Serial.printf("0x%02x Mode for 0x%02x\n", c, addr);
             break;
         }
       } else {
@@ -675,7 +640,7 @@ void _hott_check_serial_data(uint32_t tnow) {
 void _hott_send_msg(int8_t *buffer, int len) {
   if(_hott_telemetry_is_sending == true) return;
   _hott_msg_ptr = buffer;
-  _hott_msg_len = len;
+  _hott_msg_len = len +1; //len + 1 byte for crc
 }
 
 #ifdef HOTT_SIM_GAM_SENSOR
@@ -885,11 +850,9 @@ void _hott_update_gps_msg() {
 #endif
 
 #ifdef HOTT_SIM_VARIO_SENSOR
-static int _hott_max_altitude = 0;
-static int _hott_min_altitude = 0;
 
-static const char* hott_flight_mode_strings[] = {
-    "STABILIZE",        // 0
+const char hott_flight_mode_strings[NUM_MODES+1][10] PROGMEM = {
+    "STABILIZE",        		// 0
     "ACRO",                     // 1
     "ALT_HOLD",                 // 2
     "AUTO",                     // 3
@@ -899,13 +862,19 @@ static const char* hott_flight_mode_strings[] = {
     "CIRCLE",                   // 7
     "POSITION",                 // 8
     "LAND",                     // 9
-    "OF_LOITER",        // 10
+    "OF_LOITER",        		// 10
     "TOY_M",                    // 11
-    "TOY_A",
+    "TOY_A",					// 12
     "???"
 };
 
+const char hott_ARMED_STR[] PROGMEM	= "ARMED";
+const char hott_DISARMED_STR[] PROGMEM	= "DISARMED";
+
 void _hott_update_vario_msg() {
+	static int _hott_max_altitude = 0;
+	static int _hott_min_altitude = 0;
+
 	(int &)hott_vario_msg.altitude_L = (int)((current_loc.alt - home.alt) / 100)+500;
 
 	if( (current_loc.alt - home.alt) > _hott_max_altitude)
@@ -927,12 +896,12 @@ void _hott_update_vario_msg() {
 	char armed[10];
         if(control_mode > NUM_MODES)
           control_mode = NUM_MODES;
-	strcpy(mode,hott_flight_mode_strings[control_mode]);
+	strcpy_P(mode,hott_flight_mode_strings[control_mode]);
 	
 	if (motors.armed()) {
-          strcpy(armed,"ARMED");
+          strcpy_P(armed,hott_ARMED_STR);
 	} else {
-          strcpy(armed,"DISAR");
+          strcpy_P(armed,hott_DISARMED_STR);
 	}
 	memset(hott_vario_msg.text_msg,0x20,HOTT_VARIO_MSG_TEXT_LEN);
 	snprintf((char*)hott_vario_msg.text_msg,HOTT_VARIO_MSG_TEXT_LEN, "%s %s", &armed[0], &mode[0]);
@@ -1062,7 +1031,6 @@ void _hott_add_alarm(struct _hott_alarm_event_T *alarm) {
 		return;
 	// we have a new alarm
 	memcpy(&_hott_alarm_queue[_hott_alarmCnt++], alarm, sizeof(struct _hott_alarm_event_T));
-//	Serial.print("\nadd to queue");
 }
 
 //
@@ -1077,7 +1045,6 @@ void _hott_add_replay_alarm(struct _hott_alarm_event_T *alarm) {
 		return;
 	// we have a new alarm
 	memcpy(&_hott_alarm_replay_queue[_hott_alarm_ReplayCnt++], alarm, sizeof(struct _hott_alarm_event_T));
-//	Serial.print("\nadd to replay queue");
 }
 
 //
@@ -1092,7 +1059,6 @@ void _hott_remove_alarm(uint8_t num) {
 		memcpy(&_hott_alarm_queue[num-1], &_hott_alarm_queue[num], sizeof(struct _hott_alarm_event_T) * (_hott_alarmCnt - num) );
 	}
 	--_hott_alarmCnt;
-//	Serial.print("\nremove from queue");
 }
 
 //
@@ -1107,7 +1073,6 @@ void _hott_remove_replay_alarm(uint8_t num) {
 		memcpy(&_hott_alarm_replay_queue[num-1], &_hott_alarm_replay_queue[num], sizeof(struct _hott_alarm_event_T) * (_hott_alarm_ReplayCnt - num) );
 	}
 	--_hott_alarm_ReplayCnt;
-//	Serial.print("\nremove from delay queue");
 }
 
 //
@@ -1189,7 +1154,6 @@ void _hott_alarm_scheduler() {
 				_hott_add_replay_alarm(&_hott_alarm_queue[i]);
 			_hott_remove_alarm(i+1);	//first alarm at offset 1
 			--i;	//correct counter
-//			Serial.print("\nremoved alarm");
 			continue;
 		}
 		
@@ -1254,7 +1218,6 @@ void _hott_alarm_scheduler() {
 		activeAlarm = 0;
 		return;
 	}
-//Serial.printf("\nAlarm change %d",activeAlarm);
 	_hott_set_voice_alarm(_hott_alarm_queue[activeAlarm-1].alarm_profile, _hott_alarm_queue[activeAlarm-1].alarm_num);
 }
 
