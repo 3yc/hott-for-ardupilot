@@ -1,0 +1,15 @@
+[submodule "PX4/libopencm3"]
+	path = PX4/libopencm3
+	url = https://github.com/PX4/libopencm3.git
+[submodule "PX4/Bootloader"]
+	path = PX4/Bootloader
+	url = https://github.com/PX4/Bootloader.git
+[submodule "PX4/PX4NuttX"]
+	path = PX4/PX4NuttX
+	url = https://github.com/diydrones/PX4NuttX.git
+[submodule "PX4/PX4Firmware"]
+	path = PX4/PX4Firmware
+	url = https://github.com/diydrones/PX4Firmware.git
+[submodule "PX4/ardupilot"]
+	path = PX4/ardupilot
+	url = git://github.com/diydrones/ardupilot.git
