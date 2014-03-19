@@ -1,0 +1,3 @@
+MODULE_COMMAND	= ap_hott
+SRCS			= ap_hott.cpp
+MODULE_STACKSIZE = 4096
