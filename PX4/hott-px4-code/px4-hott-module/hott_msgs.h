@@ -1,3 +1,23 @@
+/**
+ * @file hott_msgs.h
+ * @author Adam Majerczyk (majerczyk.adam@gmail.com)
+*/
+
+//
+// Graupner HoTT v4 telemetry for ArduCopter on PX4 & Pixhawk hardware
+//
+// This is free software; you can redistribute it and/or modify it under
+// the terms of the GNU Lesser General Public License as published by the
+// Free Software Foundation; either version 2.1 of the License, or (at
+// your option) any later version.
+//
+// Check project homepage at https://code.google.com/p/hott-for-ardupilot/
+//
+// 01/2013 by Adam Majerczyk (majerczyk.adam@gmail.com)
+// Texmode add-on by Michi (mamaretti32@gmail.com)
+//
+//
+
 #ifndef HOTT_MSGS_H
 #define HOTT_MSGS_H
 

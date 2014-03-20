@@ -1,7 +1,25 @@
 /**
  * @file ap_hott.cpp
- * HoTT telemetry for ArduPilot
- */
+ * @author Adam Majerczyk (majerczyk.adam@gmail.com)
+ * @version 0.10.0.0b (beta)
+*/
+
+//
+// Graupner HoTT v4 telemetry for ArduCopter on PX4 & Pixhawk hardware
+//
+// This is free software; you can redistribute it and/or modify it under
+// the terms of the GNU Lesser General Public License as published by the
+// Free Software Foundation; either version 2.1 of the License, or (at
+// your option) any later version.
+//
+// Check project homepage at https://code.google.com/p/hott-for-ardupilot/
+//
+// 01/2013 by Adam Majerczyk (majerczyk.adam@gmail.com)
+// Texmode add-on by Michi (mamaretti32@gmail.com)
+// Uses parts of code from PX4 HoTT driver by Simon Wilks <sjwilks@gmail.com>
+//
+//
+//
  
 #include <nuttx/config.h>
 #include <stdio.h>
@@ -50,7 +68,7 @@ static int ap_hott_task;				/**< Handle of deamon task / thread */
 static const char commandline_usage[] = "usage: ap_hott start|status|stop [-d <device>]\n      default device is ttyS1";
 static int thread_should_exit = false;		/**< Deamon exit flag */
 static int thread_running = false;		/**< Deamon status flag */
-//static int deamon_task;				/**< Handle of deamon task / thread */
+
 //ORB ids
 static int _battery_sub = -1;
 static int _sensor_sub = -1;
@@ -155,12 +173,10 @@ int send_data(int uart, uint8_t *buffer, size_t size)
 		} else {
 			checksum += buffer[i];
 		}
-//		printf("%i:%02x ", i,buffer[i]);
 		write(uart, &buffer[i], sizeof(buffer[i]));
 		/* Sleep before sending the next byte. */
 		usleep(POST_WRITE_DELAY_IN_USECS);
 	}
-//	printf("\n");
 
 	/* A hack the reads out what was written so the next read from the receiver doesn't get it. */
 	/* TODO: Fix this!! */
@@ -168,6 +184,7 @@ int send_data(int uart, uint8_t *buffer, size_t size)
 	read(uart, &dummy, size);
 	return OK;
 }
+
 int ap_hott_main(int argc, char *argv[])
 {
 	if (argc < 1) {
@@ -205,7 +222,6 @@ int ap_hott_main(int argc, char *argv[])
 	return OK;
 }
 
-int8_t hott_checksum(uint8_t *buffer, uint16_t len);
 void updateOrbs(void);
 
 void initOrbSubs(void) {
@@ -248,13 +264,15 @@ int ap_hott_thread_main(int argc, char *argv[]) {
 					uint8_t moduleId = 0;
 					if(recv_req_id(uart, &mode, &moduleId) == OK) {
 						updateOrbs();
-//						warnx("%02x %02x", mode, moduleId);
 						switch(mode) {
 							case HOTT_TEXT_MODE_REQUEST_ID:
 								hott_handle_text_mode(uart, moduleId);
 								break;
 							case HOTT_BINARY_MODE_REQUEST_ID:
 								hott_handle_binary_mode(uart, moduleId);
+								break;
+							default:
+								warnx("unknown HoTT request 0x%02x for id 0x%02x", mode, moduleId);
 								break;
 						}
 					}
@@ -268,6 +286,7 @@ int ap_hott_thread_main(int argc, char *argv[]) {
 }
 
 void hott_handle_text_mode(int uart, uint8_t moduleId) {
+	//TODO: reimplement
 }
 
 void hott_handle_binary_mode(int uart, uint8_t moduleId) {
@@ -294,22 +313,9 @@ void hott_handle_binary_mode(int uart, uint8_t moduleId) {
 //			warnx("NO SENSOR?");
 			break;
 		default:
-			warnx("binary mode request for unknown module id 0x%02x\n", moduleId);
+			warnx("binary mode request for unknown module id 0x%02x", moduleId);
 			break;
 	}
-}
-
-/*
-  Calculates HoTT message checksum/parity
-  buffer ptr to msg
-  len buffer size incl. parity byte
-*/
-int8_t hott_checksum(uint8_t *buffer, uint16_t len) {
-  int checksum = 0;
-  for(int i=0; i< len -1; i++) {
-    checksum += buffer[i];
-  }
-  return (int8_t) checksum;
 }
 
 bool checkTopic(int topic) {
@@ -338,7 +344,6 @@ void hott_send_vario_msgs(int uart) {
 	msg.sensor_id = 0x90;
 	msg.stop_byte = 0x7d;
 	sprintf((char *)msg.text_msg,"Hello!");
-//	msg.parity = hott_checksum((uint8_t *)&msg, sizeof(struct HOTT_VARIO_MSG));
 	send_data(uart, (uint8_t *)&msg, sizeof(struct HOTT_VARIO_MSG));
 }
 
@@ -356,8 +361,8 @@ void hott_send_eam_msg(int uart) {
 	(uint16_t &)msg.main_voltage_L = (uint16_t)(battery.voltage_v * (float)10.0);
 	(uint16_t &)msg.current_L = (uint16_t)(battery.current_a * (float)10.0);
 	(uint16_t &)msg.batt_cap_L = (uint16_t)(battery.discharged_mah / (float)10.0);
-	msg.temp1 = ap_data.temperatur1 + 20;
-	msg.temp2 = ap_data.temperatur2 + 20;
+	msg.temp1 = ap_data.temperature1 + 20;
+	msg.temp2 = ap_data.temperature2 + 20;
 	(int16_t &)msg.altitude_L = ap_data.altitude;
 	(uint16_t &)msg.speed_L = ap_data.groundSpeed;
   	(uint16_t &)msg.climbrate_L = ap_data.climbrate;

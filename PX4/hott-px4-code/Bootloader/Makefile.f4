@@ -1,0 +1,56 @@
+#
+# PX4 bootloader build rules for STM32F4 targets.
+#
+
+PRODUCT		 = px4$(TARGET)_bl
+
+OPENOCD		?= openocd
+
+#JTAGCONFIG ?= interface/olimex-jtag-tiny.cfg
+#JTAGCONFIG ?= interface/jtagkey-tiny.cfg
+JTAGCONFIG ?= interface/jlink.cfg
+
+# 5 seconds / 5000 ms default delay
+PX4_BOOTLOADER_DELAY	?= 5000
+
+SRCS		 = $(COMMON_SRCS) main_f4.c
+ifeq ($(INTERFACE),USB)
+SRCS		+= cdcacm.c
+endif
+ifeq ($(INTERFACE),USART)
+SRCS		+= usart.c
+endif
+
+FLAGS		+= -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
+		   -DSTM32F4 \
+		   -DAPP_LOAD_ADDRESS=0x08004000 \
+		   -DBOOTLOADER_DELAY=$(PX4_BOOTLOADER_DELAY) \
+		   -DBOARD_$(BOARD) \
+		   -DINTERFACE_$(INTERFACE) \
+		   -DUSBDEVICESTRING="$(USBDEVICESTRING)" \
+		   -DUSBPRODUCTID="$(USBPRODUCTID)" \
+		   -Tstm32f4.ld \
+		   -L$(LIBOPENCM3)/lib/stm32/f4/ \
+		   -lopencm3_stm32f4 \
+
+ELF		 = $(PRODUCT).elf
+BINARY		 = $(PRODUCT).bin
+
+all:		$(ELF) $(BINARY)
+
+$(ELF):		$(SRCS) $(MAKEFILE_LIST)
+	$(CC) -o $@ $(SRCS) $(FLAGS)
+
+$(BINARY):	$(ELF)
+	$(OBJCOPY) -O binary $(ELF) $(BINARY)
+
+#upload: all flash flash-bootloader
+upload: all flash-bootloader
+
+flash-bootloader:
+	$(OPENOCD) --search ../px4_bootloader -f $(JTAGCONFIG) -f stm32f4x.cfg -c "adapter_khz 500" -c init -c "reset halt" -c "flash write_image erase $(BINARY) 0x08000000" -c "reset run" -c shutdown
+
+# Use to upload to a stm32f4-discovery devboard, requires the latest version of openocd (from git)
+# build openocd with "cd openocd; ./bootstrap; ./configure --enable-maintainer-mode --enable-stlink"
+upload-discovery: 
+	$(OPENOCD) --search ../px4_bootloader -f board/stm32f4discovery.cfg -c init -c "reset halt" -c "flash probe 0" -c "stm32f2x mass_erase 0" -c "flash write_image erase $(BINARY) 0x08000000" -c "reset" -c shutdown

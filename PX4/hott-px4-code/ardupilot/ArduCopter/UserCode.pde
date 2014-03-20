@@ -94,8 +94,8 @@ void userhook_SlowLoop()
 	apData.timestamp = hal.scheduler->micros();
 	apData.battery1_v = 0;
 	apData.battery2_v = 0;
-	apData.temperatur1 = barometer.get_temperature();
-	apData.temperatur2 = 0;
+	apData.temperature1 = barometer.get_temperature();
+	apData.temperature2 = 0;
 	apData.altitude = g_gps->altitude_cm;
 	apData.groundSpeed = ((float)((g_gps->ground_speed_cm / 100) * 0.036));
 	apData.groundCourse = g_gps->ground_course_cd;

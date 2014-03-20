@@ -1,8 +1,21 @@
 /**
  * @file ap_data.h
- *
- * Definition of the ArduPilot status uORB topic.
- */
+ * @author Adam Majerczyk (majerczyk.adam@gmail.com)
+*/
+
+//
+// Graupner HoTT v4 telemetry for ArduCopter on PX4 & Pixhawk hardware
+//
+// This is free software; you can redistribute it and/or modify it under
+// the terms of the GNU Lesser General Public License as published by the
+// Free Software Foundation; either version 2.1 of the License, or (at
+// your option) any later version.
+//
+// Check project homepage at https://code.google.com/p/hott-for-ardupilot/
+//
+// 01/2013 by Adam Majerczyk (majerczyk.adam@gmail.com)
+//
+//
 
 #ifndef AP_DATA_H_
 #define AP_DATA_H_
@@ -17,7 +30,7 @@
  */
 
 /**
- * 
+ * ArduPilot Data topics
  */
 
 struct ap_data_s {
@@ -26,16 +39,16 @@ struct ap_data_s {
 	uint16_t	battery1_v;	//Battery 1 voltage
 	uint16_t	battery2_v;	//Battery 2 voltage
 	
-	float		temperatur1;	//scale °C
-	float		temperatur2;	//scale °C
+	float		temperature1;	//scale °C
+	float		temperature2;	//scale °C
 	uint16_t	altitude;		// in cm
 	
 	uint16_t	groundSpeed;	//	ground speed in km/h
 	uint16_t	groundCourse;	// ground course in 100ths of a degree
 	uint16_t 	climbrate;		//// The cm/s we are moving up or down based on filtered data - Positive = UP
 	
-	bool	motor_armed;	//motors armed?
-	int8_t	control_mode;	//Stabilise, loiter, auto etc.
+	bool		motor_armed;	//motors armed?
+	int8_t		control_mode;	//Stabilise, loiter, auto etc.
 
 	uint16_t	home_distance;	//meters
 	uint16_t	home_direction;	//direction from starting point to Model position
@@ -43,15 +56,15 @@ struct ap_data_s {
 	uint16_t	wp_distance;	//waypoint distance in meters
 	uint16_t	wp_direction;	//waypoint bearing
 	
-	int32_t latitude;	//latitude in degrees * 10,000,000
-	int32_t longitude;	//longitude in degrees * 10,000,000
+	int32_t 	latitude;	//latitude in degrees * 10,000,000
+	int32_t 	longitude;	//longitude in degrees * 10,000,000
 	
-	uint8_t	satelites;	//GPS visible sat
-	uint8_t gps_sat_fix;
+	uint8_t		satelites;	//GPS visible sat
+	uint8_t 	gps_sat_fix;
 	
-	int8_t	angle_roll;
-	int8_t	angle_nick;
-	int8_t	angle_compas;
+	int8_t		angle_roll;
+	int8_t		angle_nick;
+	int8_t		angle_compas;
 	
 	uint32_t	utc_time;	// UTC in ms
 };
