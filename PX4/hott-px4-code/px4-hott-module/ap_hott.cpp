@@ -45,8 +45,10 @@
 //#define DEFAULT_UART "/dev/ttyS2";		/**< USART5 */
 #define DEFAULT_UART "/dev/ttyS1";		/**< USART? */
 #define HOTT_READ_TIMEOUT_MS	1000
+//Delay before a HoTT answer. at least 5ms. The tweaked value for PX4 is around 4500
 #define POST_READ_DELAY_IN_USECS	4500
-#define POST_WRITE_DELAY_IN_USECS	1500
+//Delay between each HoTT msg bytes. Should be slightly above 2ms
+#define POST_WRITE_DELAY_IN_USECS	2000
 
 //function prototypes
 extern "C" __EXPORT int ap_hott_main(int argc, char *argv[]);
