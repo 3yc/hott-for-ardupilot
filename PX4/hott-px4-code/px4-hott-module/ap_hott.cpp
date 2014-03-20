@@ -123,7 +123,10 @@ int open_uart(const char *device)
 	tcgetattr(uart, &uart_config);
 
 	/* Clear ONLCR flag (which appends a CR for every LF) */
-	uart_config.c_oflag &= ~ONLCR;
+	warnx("uart_config.c_oflag = 0x%x", uart_config.c_oflag);
+	uart_config.c_oflag &= ~OPOST;	//disable post processing
+	warnx("uart_config.c_oflag = 0x%x", uart_config.c_oflag);
+//	uart_config.c_oflag &= ~ONLCR;
 
 	/* Set baud rate */
 	if (cfsetispeed(&uart_config, speed) < 0 || cfsetospeed(&uart_config, speed) < 0) {
@@ -139,6 +142,7 @@ int open_uart(const char *device)
 
 	/* Activate single wire mode */
 	ioctl(uart, TIOCSSINGLEWIRE, SER_SINGLEWIRE_ENABLED);
+	tcflush(uart, TCIOFLUSH);	//flush input & output
 
 	return uart;
 }

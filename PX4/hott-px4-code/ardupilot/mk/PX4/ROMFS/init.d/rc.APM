@@ -72,11 +72,6 @@ then
    else
       set deviceD /dev/ttyS1
    fi
-   #ttyS1 used by ap_hott
-   if [ -f /bin/ap_hott ]
-   then
-      set deviceD /dev/null
-   fi
 else
    set deviceC /dev/ttyS1
    set deviceD /dev/ttyS2
@@ -174,7 +169,6 @@ else
         echo "Setting FMU mode_pwm"
         fmu mode_pwm
 fi
-
 
 echo "Starting APM sensors"
 if ms5611 start
@@ -314,20 +308,23 @@ then
   fi
 fi
 
-ap_hott start
+# Start HoTT for ArduPilot
+if [ $BOARD == FMUv2 ]
+then
+	ap_hott start -d /dev/ttyS6
+else
+	#free ttyS1 for ap_hott
+	set deviceD /dev/null
+	ap_hott start -d /dev/ttyS1
+fi
 
 echo Starting ArduPilot $deviceA $deviceC $deviceD
-#if ArduPilot -d $deviceA -d2 $deviceC -d3 $deviceD start
-# d1 /dev/ttyACM0
-# d2 /dev/ttyS2
-# d3 /dev/ttyS1
-if ArduPilot -d /dev/null -d2 /dev/ttyS2 -d3 /dev/null start
+#if ArduPilot -d /dev/null -d2 $deviceC -d3 $deviceD start
+if ArduPilot -d $deviceA -d2 $deviceC -d3 $deviceD start
 then
    echo ArduPilot started OK
+#   nshterm /dev/ttyACM0 &
 else
-#    sh /etc/init.d/rc.error
+    sh /etc/init.d/rc.error
 fi
-sh /etc/init.d/rc.error
-
 echo "rc.APM finished"
-
