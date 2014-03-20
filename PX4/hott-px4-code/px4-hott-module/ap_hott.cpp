@@ -80,7 +80,8 @@ struct battery_status_s battery;
 struct sensor_combined_s sensors;
 struct ap_data_s ap_data;
 
-const char hott_flight_mode_strings[13+1][10] = {
+#define NUM_MODES	13
+const char hott_flight_mode_strings[NUM_MODES+1][10] = {
     "STABILIZE",        		// 0
     "ACRO",                     // 1
     "ALT_HOLD",                 // 2
@@ -123,9 +124,7 @@ int open_uart(const char *device)
 	tcgetattr(uart, &uart_config);
 
 	/* Clear ONLCR flag (which appends a CR for every LF) */
-	warnx("uart_config.c_oflag = 0x%x", uart_config.c_oflag);
 	uart_config.c_oflag &= ~OPOST;	//disable post processing
-	warnx("uart_config.c_oflag = 0x%x", uart_config.c_oflag);
 //	uart_config.c_oflag &= ~ONLCR;
 
 	/* Set baud rate */
@@ -307,7 +306,7 @@ void hott_handle_binary_mode(int uart, uint8_t moduleId) {
 			break;
 		case HOTT_TELEMETRY_VARIO_SENSOR_ID:
 //			warnx("VARIO");
-//			hott_send_vario_msgs(uart);
+			hott_send_vario_msgs(uart);
 			break;
 		case HOTT_TELEMETRY_GAM_SENSOR_ID:
 //			warnx("GAM");
@@ -342,14 +341,50 @@ void updateOrbs(void) {
 }
 
 void hott_send_vario_msgs(int uart) {
+	const uint8_t ARMED_STR[]	= "ARMED";
+	const uint8_t DISARMED_STR[] = "DISARMED";
+
 	struct HOTT_VARIO_MSG msg;
+	static int16_t max_altitude = 0;
+	static int16_t min_altitude = 0;
+	
 
 	memset(&msg, 0, sizeof(struct HOTT_VARIO_MSG));
 	msg.start_byte = 0x7c;
 	msg.vario_sensor_id = HOTT_TELEMETRY_VARIO_SENSOR_ID;
 	msg.sensor_id = 0x90;
 	msg.stop_byte = 0x7d;
-	sprintf((char *)msg.text_msg,"Hello!");
+	
+	(uint16_t &)msg.altitude_L = (ap_data.altitude_rel / 100)+500;	//send relative altitude
+	//update alt. statistic
+	if( ap_data.altitude_rel > max_altitude)
+		max_altitude = ap_data.altitude_rel;
+	(int16_t &)msg.altitude_max_L = (max_altitude / 100)+500;
+
+	if( ap_data.altitude_rel < min_altitude)
+		min_altitude = ap_data.altitude_rel;
+	(int16_t &)msg.altitude_min_L = (min_altitude / 100)+500;
+
+	(int16_t &)msg.climbrate_L = 30000 + ap_data.climbrate;
+	(int16_t &)msg.climbrate3s_L = 30000 + ap_data.climbrate;	//TODO: calc this
+	(int16_t &)msg.climbrate10s_L = 30000 + ap_data.climbrate;	//TODO: calc this stuff
+	
+	msg.compass_direction = ap_data.angle_compas;
+	
+	//Free text processing
+	if(ap_data.control_mode > NUM_MODES)
+		ap_data.control_mode = NUM_MODES;
+	
+	char *pArmedStr = (char *)DISARMED_STR;
+	if (ap_data.motor_armed) {
+		pArmedStr = (char *)ARMED_STR;
+	}
+	//clear line
+	memset(msg.text_msg,0x20,HOTT_VARIO_MSG_TEXT_LEN);
+	uint8_t len = strlen(pArmedStr);
+	memcpy((uint8_t*)msg.text_msg, pArmedStr, len);
+	memcpy((uint8_t*)&msg.text_msg[len+1], hott_flight_mode_strings[ap_data.control_mode], strlen(hott_flight_mode_strings[ap_data.control_mode]));
+
 	send_data(uart, (uint8_t *)&msg, sizeof(struct HOTT_VARIO_MSG));
 }
 
@@ -486,7 +521,7 @@ void hott_send_gps_msg(int uart) {
 	  (uint16_t &)msg.pos_EW_dm_L = lng;
 	  (uint16_t &)msg.pos_EW_sec_L = lng_sec;
 
-	  (uint16_t &)msg.altitude_L = (ap_data.altitude/ 100)+500;  //meters above ground
+	  (uint16_t &)msg.altitude_L = (ap_data.altitude_rel / 100)+500;  //meters above ground
 
 	  (int16_t &)msg.climbrate_L = 30000 + ap_data.climbrate;  
 	  msg.climbrate3s = 120;// + (ap_data.climb_rate / 100);  // 0 m/3s

@@ -41,14 +41,15 @@ struct ap_data_s {
 	
 	float		temperature1;	//scale °C
 	float		temperature2;	//scale °C
-	uint16_t	altitude;		// in cm
+	int16_t		altitude;		// in cm
+	int16_t		altitude_rel;	// relative altitude to home location
 	
 	uint16_t	groundSpeed;	//	ground speed in km/h
 	uint16_t	groundCourse;	// ground course in 100ths of a degree
-	uint16_t 	climbrate;		//// The cm/s we are moving up or down based on filtered data - Positive = UP
+	int16_t 	climbrate;		//// The cm/s we are moving up or down based on filtered data - Positive = UP
 	
 	bool		motor_armed;	//motors armed?
-	int8_t		control_mode;	//Stabilise, loiter, auto etc.
+	uint8_t		control_mode;	//Stabilise, loiter, auto etc.
 
 	uint16_t	home_distance;	//meters
 	uint16_t	home_direction;	//direction from starting point to Model position
@@ -62,9 +63,9 @@ struct ap_data_s {
 	uint8_t		satelites;	//GPS visible sat
 	uint8_t 	gps_sat_fix;
 	
-	int8_t		angle_roll;
-	int8_t		angle_nick;
-	int8_t		angle_compas;
+	uint8_t		angle_roll;
+	uint8_t		angle_nick;
+	uint8_t		angle_compas;
 	
 	uint32_t	utc_time;	// UTC in ms
 };

@@ -97,6 +97,7 @@ void userhook_SlowLoop()
 	apData.temperature1 = barometer.get_temperature();
 	apData.temperature2 = 0;
 	apData.altitude = g_gps->altitude_cm;
+	apData.altitude_rel = current_loc.alt - home.alt;	//in cm
 	apData.groundSpeed = ((float)((g_gps->ground_speed_cm / 100) * 0.036));
 	apData.groundCourse = g_gps->ground_course_cd;
 	apData.climbrate = 30000 + climb_rate;
