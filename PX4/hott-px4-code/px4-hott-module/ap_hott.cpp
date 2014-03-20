@@ -45,8 +45,8 @@
 //#define DEFAULT_UART "/dev/ttyS2";		/**< USART5 */
 #define DEFAULT_UART "/dev/ttyS1";		/**< USART? */
 #define HOTT_READ_TIMEOUT_MS	1000
-#define POST_READ_DELAY_IN_USECS	4000
-#define POST_WRITE_DELAY_IN_USECS	2000
+#define POST_READ_DELAY_IN_USECS	4500
+#define POST_WRITE_DELAY_IN_USECS	1500
 
 //function prototypes
 extern "C" __EXPORT int ap_hott_main(int argc, char *argv[]);
