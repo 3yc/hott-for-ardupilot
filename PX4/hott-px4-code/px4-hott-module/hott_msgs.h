@@ -49,12 +49,12 @@
 //Text mode msgs type
 struct HOTT_TEXTMODE_MSG {
 	int8_t start_byte;	//#01 constant value 0x7b
-	int8_t fill1;			//#02 constant value 0x00
-	int8_t warning_beeps;	//#03 1=A 2=B ...
+	int8_t fill1;		//#02 constant value 0x00
+	int8_t warning_beeps;//#03 1=A 2=B ...
 	int8_t msg_txt[HOTT_TEXTMODE_MSG_TEXT_LEN];	//#04 ASCII text to display to
-							// Bit 7 = 1 -> Inverse character display
-                            // Display 21x8
-	int8_t stop_byte;		//#171 constant value 0x7d
+						// Bit 7 = 1 -> Inverse character display
+                        // Display 21x8
+	int8_t stop_byte;	//#171 constant value 0x7d
 	int8_t parity;		//#172 Checksum / parity
 };
 struct HOTT_GAM_MSG {
@@ -299,9 +299,9 @@ struct HOTT_EAM_MSG {
 
 //HoTT GPS Sensor response to Receiver (?!not?! Smartbox)
 struct HOTT_GPS_MSG {
-  int8_t start_byte;      //#01 constant value 0x7c
-  int8_t gps_sensor_id;   //#02 constant value 0x8a
-  int8_t warning_beeps;   //#03 1=A 2=B ...
+  int8_t start_byte;    //#01 constant value 0x7c
+  int8_t gps_sensor_id; //#02 constant value 0x8a
+  int8_t warning_beeps; //#03 1=A 2=B ...
 						// A	Min Speed
 						// L	Max Speed
 						// O	Min Altitude

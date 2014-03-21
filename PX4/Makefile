@@ -20,12 +20,15 @@ config:
 quad: px4-hott
 	cd ardupilot/ArduCopter; $(MAKE) px4-quad
 
+hexa: px4-hott
+	cd ardupilot/ArduCopter; $(MAKE) px4-hexa
+
 #upload ArduCopter to PX4
-v1-upload: px4-hott
+v1-upload:
 	cd ardupilot/ArduCopter; $(MAKE) px4-v1-upload
 
 #upload ArduCopter to Pixhawk
-v2-upload: px4-hott
+v2-upload:
 	cd ardupilot/ArduCopter; $(MAKE) px4-v2-upload
 
 px4-hott:

@@ -388,7 +388,6 @@ void hott_send_vario_msgs(int uart) {
 	send_data(uart, (uint8_t *)&msg, sizeof(struct HOTT_VARIO_MSG));
 }
 
-
 void hott_send_eam_msg(int uart) {
 	struct HOTT_EAM_MSG msg;
 
@@ -417,7 +416,6 @@ void hott_send_eam_msg(int uart) {
      }
 	send_data(uart, (uint8_t *)&msg, sizeof(struct HOTT_EAM_MSG));
 }
-
 
 void hott_send_gps_msg(int uart) {
 	struct HOTT_GPS_MSG msg;
