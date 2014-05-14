@@ -41,6 +41,7 @@
 
 #include "hott_msgs.h"
 
+
 //#define DEFAULT_UART "/dev/ttyS0";		/**< USART1 */
 //#define DEFAULT_UART "/dev/ttyS2";		/**< USART5 */
 #define DEFAULT_UART "/dev/ttyS1";		/**< USART? */
@@ -50,6 +51,29 @@
 //Delay between each HoTT msg bytes. Should be slightly above 2ms
 #define POST_WRITE_DELAY_IN_USECS	2000
 
+//HoTT alarm macro
+#define HOTT_ALARM_NUM(a) (a-0x40)
+
+struct _hott_alarm_event_T {
+	uint16_t alarm_time; 		//Alarm play time in 1sec units
+	uint16_t alarm_time_replay;	//Alarm repeat time in 1sec. units. 0 -> One time alarm
+								//forces a delay between new alarms of the same kind
+	uint8_t visual_alarm1;		//Visual alarm bitmask
+	uint8_t visual_alarm2;		//Visual alarm bitmask
+	uint8_t alarm_num;			//Alarm number 0..255 (A-Z)
+	uint8_t alarm_profile;		//profile id ie HOTT_TELEMETRY_GPS_SENSOR_ID
+};
+typedef struct _hott_alarm_event_T _hott_alarm_event;
+
+
+#define HOTT_ALARM_QUEUE_MAX		5
+//TODO: better queueing solution
+static _hott_alarm_event _hott_alarm_queue[HOTT_ALARM_QUEUE_MAX];
+static _hott_alarm_event _hott_alarm_replay_queue[HOTT_ALARM_QUEUE_MAX];
+static uint8_t _hott_alarmCnt = 0;
+static uint8_t _hott_alarm_ReplayCnt = 0;
+
+
 //function prototypes
 extern "C" __EXPORT int ap_hott_main(int argc, char *argv[]);
 int ap_hott_thread_main(int argc, char *argv[]);
@@ -57,6 +81,7 @@ int open_uart(const char *device);
 int recv_req_id(int uart, uint8_t *mode, uint8_t *id);
 int send_data(int uart, uint8_t *buffer, size_t size);
 void initOrbSubs(void);
+void updateOrbs(void);
 
 void hott_handle_text_mode(int uart, uint8_t moduleId);
 void hott_handle_binary_mode(int uart, uint8_t moduleId);
@@ -64,6 +89,17 @@ void hott_send_vario_msgs(int uart);
 void hott_send_eam_msg(int uart);
 void hott_send_gps_msg(int uart);
 bool checkTopic(int topic);
+
+bool _hott_alarm_active_exists(struct _hott_alarm_event_T *alarm);
+bool _hott_alarm_replay_exists(struct _hott_alarm_event_T *alarm);
+bool _hoot_alarm_exists(struct _hott_alarm_event_T *alarm);
+void _hott_add_alarm(struct _hott_alarm_event_T *alarm);
+void _hott_add_replay_alarm(struct _hott_alarm_event_T *alarm);
+void _hott_remove_alarm(uint8_t num);
+void _hott_remove_replay_alarm(uint8_t num);
+void hott_update_replay_queue(void);
+void hott_check_alarm(void);
+void hott_alarm_scheduler(void);
 
 //variables
 static int ap_hott_task;				/**< Handle of deamon task / thread */
@@ -227,8 +263,6 @@ int ap_hott_main(int argc, char *argv[])
 	return OK;
 }
 
-void updateOrbs(void);
-
 void initOrbSubs(void) {
 	memset(&battery, 0, sizeof(battery));
 	_battery_sub = orb_subscribe(ORB_ID(battery_status));
@@ -241,7 +275,12 @@ void initOrbSubs(void) {
 }
 
 int ap_hott_thread_main(int argc, char *argv[]) {
+	struct timespec t;
+	time_t	secOld = 0;
+	
+
 		thread_running = true;
+		//Create
 		/* read commandline arguments */
 		const char *device = DEFAULT_UART;
 		for (int i = 0; i < argc && argv[i]; i++) {
@@ -279,6 +318,17 @@ int ap_hott_thread_main(int argc, char *argv[]) {
 							default:
 								warnx("unknown HoTT request 0x%02x for id 0x%02x", mode, moduleId);
 								break;
+						}
+					}
+					//Alarm check every 1sec
+					if(clock_gettime(CLOCK_REALTIME, &t) == OK) {
+						if(t.tv_sec != secOld) {
+							//at least 1 sec
+							secOld = t.tv_sec;
+//							warnx("tick");
+//							hott_check_alarm();
+//							hott_alarm_scheduler();
+//							hott_update_replay_queue();						
 						}
 					}
 				}
@@ -545,3 +595,190 @@ void hott_send_gps_msg(int uart) {
 	
 	send_data(uart, (uint8_t *)&msg, sizeof(struct HOTT_GPS_MSG));
 }
+
+/**
+	Alarms
+*/
+//
+// checks if an alarm exists in active queue
+//
+bool _hott_alarm_active_exists(struct _hott_alarm_event_T *alarm) {
+	//check active alarms
+	for(uint8_t i=0; i<_hott_alarmCnt; i++) {
+		if(_hott_alarm_queue[i].alarm_num == alarm->alarm_num &&
+			_hott_alarm_queue[i].alarm_profile == alarm->alarm_profile) {
+			//alarm exists.
+			return true;
+		}
+	}
+	return false;
+}
+
+//
+// checks if an alarm exists in replay queue
+//
+bool _hott_alarm_replay_exists(struct _hott_alarm_event_T *alarm) {
+	//check replay delay queue
+	for(uint8_t i=0; i<_hott_alarm_ReplayCnt; i++) {
+		if(_hott_alarm_replay_queue[i].alarm_num == alarm->alarm_num &&
+			_hott_alarm_replay_queue[i].alarm_profile == alarm->alarm_profile) {
+			//alarm exists
+			return true;
+		}
+	}
+	return false;
+}
+
+//
+// checks if an alarm exists
+//
+bool _hoot_alarm_exists(struct _hott_alarm_event_T *alarm) {
+	if(_hott_alarm_active_exists(alarm))
+		return true;
+	if(_hott_alarm_replay_exists(alarm))
+		return true;
+	return false;
+}
+
+//
+// adds an alarm to active queue
+//
+void _hott_add_alarm(struct _hott_alarm_event_T *alarm) {
+	if(alarm == 0)
+		return;
+	if(_hott_alarmCnt >= HOTT_ALARM_QUEUE_MAX)
+		return;	//no more space left...
+	if(_hoot_alarm_exists(alarm)) 
+		return;
+	// we have a new alarm
+	memcpy(&_hott_alarm_queue[_hott_alarmCnt++], alarm, sizeof(struct _hott_alarm_event_T));
+}
+
+//
+// adds an alarm to replay queue
+//
+void _hott_add_replay_alarm(struct _hott_alarm_event_T *alarm) {
+	if(alarm == 0)
+		return;
+	if(_hott_alarm_ReplayCnt >= HOTT_ALARM_QUEUE_MAX)
+		return;	//no more space left...
+	if(_hott_alarm_replay_exists(alarm)) 
+		return;
+	// we have a new alarm
+	memcpy(&_hott_alarm_replay_queue[_hott_alarm_ReplayCnt++], alarm, sizeof(struct _hott_alarm_event_T));
+}
+
+//
+//removes an alarm from active queue
+//first alarm at offset 1
+//
+void _hott_remove_alarm(uint8_t num) {
+	if(num > _hott_alarmCnt || num == 0)	//has to be > 0
+		return; // possibile error
+
+	if(_hott_alarmCnt != 1) {
+		memcpy(&_hott_alarm_queue[num-1], &_hott_alarm_queue[num], sizeof(struct _hott_alarm_event_T) * (_hott_alarmCnt - num) );
+	}
+	--_hott_alarmCnt;
+}
+
+//
+//removes an alarm from replay queue
+//first alarm at offset 1
+//
+void _hott_remove_replay_alarm(uint8_t num) {
+	if(num > _hott_alarm_ReplayCnt || num == 0)	//has to be > 0
+		return; // possibile error
+
+	if(_hott_alarm_ReplayCnt != 1) {
+		memcpy(&_hott_alarm_replay_queue[num-1], &_hott_alarm_replay_queue[num], sizeof(struct _hott_alarm_event_T) * (_hott_alarm_ReplayCnt - num) );
+	}
+	--_hott_alarm_ReplayCnt;
+}
+
+//
+// Updates replay delay queue
+//
+void hott_update_replay_queue(void) {
+	for(uint8_t i=0; i< _hott_alarm_ReplayCnt; i++) {
+		if(--_hott_alarm_replay_queue[i].alarm_time_replay == 0) {
+			//remove it
+			_hott_remove_replay_alarm(i+1);
+			i--;
+			continue;
+		}
+	}
+}
+
+//
+// active alarm scheduler
+//
+void hott_alarm_scheduler(void) {
+	static uint8_t activeAlarmTimer = 3* 50;
+	static uint8_t activeAlarm = 0;
+
+	if(_hott_alarmCnt < 1)
+		return;	//no alarms	
+	
+	for(uint8_t i = 0; i< _hott_alarmCnt; i++) {
+		if(_hott_alarm_queue[i].alarm_time == 0) {
+			//end of alarm, remove it
+			if(_hott_alarm_queue[i].alarm_time_replay != 0)
+				_hott_add_replay_alarm(&_hott_alarm_queue[i]);
+			_hott_remove_alarm(i+1);	//first alarm at offset 1
+			--i;	//correct counter
+			continue;
+		}
+	}
+#if 0		//
+		switch(_hott_alarm_queue[i].alarm_profile) {
+			case HOTT_TELEMETRY_EAM_SENSOR_ID:
+				a->vEam |= _hott_alarm_queue[i].visual_alarm1;
+				a->vEam2 |= _hott_alarm_queue[i].visual_alarm2;
+				break;
+			case HOTT_TELEMETRY_GPS_SENSOR_ID:
+				a->vGps |= _hott_alarm_queue[i].visual_alarm1;
+				a->vGps2 |= _hott_alarm_queue[i].visual_alarm2;
+				break;
+			case HOTT_TELEMETRY_VARIO_SENSOR_ID:
+				a->vVario |= _hott_alarm_queue[i].visual_alarm1;
+				break;
+			case HOTT_TELEMETRY_GAM_SENSOR_ID:
+				a->vGam |= _hott_alarm_queue[i].visual_alarm1;		
+				a->vGam2 |= _hott_alarm_queue[i].visual_alarm2;		
+				break;
+			default:
+				break;
+		}
+	} //end: visual alarm loop
+
+	if(activeAlarm != 0) { //is an alarm active
+		if ( ++activeAlarmTimer % 2 == 0 ) {	//every 1sec
+			_hott_alarm_queue[activeAlarm-1].alarm_time--;
+		}
+		if ( activeAlarmTimer < 50 * 2) //alter alarm every 2 sec
+			return;
+	}
+	activeAlarmTimer = 0;
+
+	if(++activeAlarm > _hott_alarmCnt) {
+		activeAlarm = 1;
+	}
+	if(_hott_alarmCnt <= 0) {
+		activeAlarm = 0;
+		return;
+	}
+//	_hott_set_voice_alarm(_hott_alarm_queue[activeAlarm-1].alarm_profile, _hott_alarm_queue[activeAlarm-1].alarm_num);
+#endif
+}
+
+
+
+//
+//	alarm triggers to check
+//
+void hott_check_alarm()  {
+//	_hott_eam_check_mAh();
+//	_hott_eam_check_mainPower();
+}
+

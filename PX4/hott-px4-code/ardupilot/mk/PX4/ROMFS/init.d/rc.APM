@@ -320,11 +320,11 @@ fi
 
 echo Starting ArduPilot $deviceA $deviceC $deviceD
 #if ArduPilot -d /dev/null -d2 $deviceC -d3 $deviceD start
-if ArduPilot -d $deviceA -d2 $deviceC -d3 $deviceD start
-then
-   echo ArduPilot started OK
+#if ArduPilot -d $deviceA -d2 $deviceC -d3 $deviceD start
+#then
+#   echo ArduPilot started OK
 #   nshterm /dev/ttyACM0 &
-else
+#else
     sh /etc/init.d/rc.error
-fi
+	#fi
 echo "rc.APM finished"
