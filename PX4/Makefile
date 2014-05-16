@@ -23,6 +23,9 @@ quad: px4-hott
 hexa: px4-hott
 	cd ardupilot/ArduCopter; $(MAKE) px4-hexa
 
+tri: px4-hott
+	cd ardupilot/ArduCopter; $(MAKE) px4-tri
+
 #upload ArduCopter to PX4
 v1-upload:
 	cd ardupilot/ArduCopter; $(MAKE) px4-v1-upload
@@ -37,3 +40,5 @@ px4-hott:
 
 clean:
 	cd ardupilot/ArduCopter; $(MAKE) px4-clean
+	cd PX4Firmware; $(MAKE) clean 
+	cd PX4NuttX/nuttx; $(MAKE) clean
