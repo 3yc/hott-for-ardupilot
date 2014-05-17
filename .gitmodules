@@ -13,3 +13,6 @@
 [submodule "PX4/ardupilot"]
 	path = PX4/ardupilot
 	url = git://github.com/diydrones/ardupilot.git
+[submodule "PX4/PX4Hardware"]
+	path = PX4/PX4Hardware
+	url = https://github.com/PX4/Hardware.git

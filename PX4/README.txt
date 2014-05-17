@@ -32,3 +32,14 @@
 	
 == Hardware setup / How to connect a HoTT receiver to PX4/Pixhawk:
 The HoTT code uses per default /dev/ttyS1 on PX4 and /dev/ttyS6 on Pixhawk. You can change the serial port by editing the PX4/hott-px4-code/ardupilot/ArduCoper/mk/PX4/ROMFS/init.d/rc.APM file. Simon Wilks made a good video how to connect to PX4 (https://www.youtube.com/watch?v=0KkZRDJnRtk). Take a look at the Pixhawk wiki also: http://pixhawk.org/peripherals/telemetry/hott
+
+ttySx <-> UARTx mapping:
+===========================
+Device	PX4		Pixhawk
+ttyS0	UART1	UART3
+ttyS1	UART2	UART2 (TELEM1)
+ttyS2	UART5	UART
+ttyS3	UART6	UART
+ttyS4	N/A		UART6
+ttyS5	N/A		UART7
+ttYS6	N/A		UART8
