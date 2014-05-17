@@ -100,7 +100,7 @@ void userhook_SlowLoop()
 	apData.altitude_rel = current_loc.alt - home.alt;	//in cm
 	apData.groundSpeed = ((float)((gps.ground_speed()) * 0.036));
 	apData.groundCourse = gps.ground_course_cd();
-	apData.climbrate = 30000 + climb_rate;
+	apData.climbrate = climb_rate;
 	
 	apData.motor_armed = motors.armed();
 	apData.control_mode = control_mode;

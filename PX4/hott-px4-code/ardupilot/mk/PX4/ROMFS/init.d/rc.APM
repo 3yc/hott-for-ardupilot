@@ -4,6 +4,8 @@
 
 # To disable APM startup add a /fs/microsd/APM/nostart file
 # To enable mkblctrl startup add a /fs/microsd/APM/mkblctrl file
+# To enable mkblctrl_+ startup add a /fs/microsd/APM/mkblctrl_+ file
+# To enable mkblctrl_x startup add a /fs/microsd/APM/mkblctrl_x file
 # To enable PWM on FMUv1 on ttyS1 add a /fs/microsd/APM/AUXPWM.en file
 
 set deviceA /dev/ttyACM0
@@ -84,6 +86,28 @@ else
     sh /etc/init.d/rc.error
 fi
 
+# start mkblctrl driver if configured
+if [ -f /fs/microsd/APM/mkblctrl ]
+then
+    echo "Setting up mkblctrl driver"
+    echo "Setting up mkblctrl driver" >> $logfile
+    mkblctrl -d /dev/pwm_output
+fi
+
+if [ -f /fs/microsd/APM/mkblctrl_+ ]
+then
+    echo "Setting up mkblctrl driver +"
+    echo "Setting up mkblctrl driver +" >> $logfile
+    mkblctrl -mkmode + -d /dev/pwm_output
+fi
+
+if [ -f /fs/microsd/APM/mkblctrl_x ]
+then
+    echo "Setting up mkblctrl driver x"
+    echo "Setting up mkblctrl driver x" >> $logfile
+    mkblctrl -mkmode x -d /dev/pwm_output
+fi
+
 
 # try the px4io start twice. Some FMUv2 board don't
 # come up the first time
@@ -150,15 +174,6 @@ else
     then
        sh /etc/init.d/rc.error
     fi
-
-    if [ -f /fs/microsd/APM/mkblctrl ]
-    then
-   	echo "APM/mkblctrl found - switch to MK I2C ESCs"
-   	echo "APM/mkblctrl found - switch to MK I2C ESCs" >> $logfile
-	echo "Setting up mkblctrl driver"
-	echo "Setting up mkblctrl driver" >> $logfile
-	mkblctrl -mkmode x
-    fi
 fi
 
 if [ $BOARD == FMUv1 -a $deviceD == /dev/ttyS1 ]
@@ -169,6 +184,7 @@ else
         echo "Setting FMU mode_pwm"
         fmu mode_pwm
 fi
+
 
 echo "Starting APM sensors"
 if ms5611 start
@@ -197,7 +213,7 @@ then
         else 
           echo "hmc5883 calibrate failed"
           echo "hmc5883 calibrate failed" >> $logfile
-          sh /etc/init.d/rc.error
+          tone_alarm MSBBB
         fi
     else
         echo "hmc5883 start failed"
@@ -228,7 +244,7 @@ else
         else 
           echo "hmc5883 calibrate failed"
           echo "hmc5883 calibrate failed" >> $logfile
-          sh /etc/init.d/rc.error
+          tone_alarm MSBBB
         fi
     fi
 
@@ -265,14 +281,6 @@ then
 fi
 
 echo "Trying PX4IO board"
-
-# rgbled
-if rgbled start
-then
-   echo "rgbled started OK"
-else
-   echo "Failed to start rgbled driver" >> $logfile
-fi
 
 if mtd start /fs/mtd
 then
@@ -319,12 +327,12 @@ else
 fi
 
 echo Starting ArduPilot $deviceA $deviceC $deviceD
-#if ArduPilot -d /dev/null -d2 $deviceC -d3 $deviceD start
-#if ArduPilot -d $deviceA -d2 $deviceC -d3 $deviceD start
-#then
-#   echo ArduPilot started OK
-#   nshterm /dev/ttyACM0 &
-#else
+# -d4 sec. GPS port, ttyS6 per default
+if ArduPilot -d $deviceA -d2 $deviceC -d3 $deviceD -d4 /dev/null start
+then
+    echo ArduPilot started OK
+else
     sh /etc/init.d/rc.error
-	#fi
+fi
+#nshterm /dev/ttyACM0 &
 echo "rc.APM finished"
