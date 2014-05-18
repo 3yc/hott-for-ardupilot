@@ -467,6 +467,24 @@ void hott_send_eam_msg(int uart) {
 	send_data(uart, (uint8_t *)&msg, sizeof(struct HOTT_EAM_MSG));
 }
 
+void convertLatLong(float degree, uint8_t &posNS_EW, uint16_t &degMinutes, uint16_t &degSeconds) {
+	degree = degree / 10000000.0f;
+    if (degree >= 0) {
+        posNS_EW = 0;
+        }
+    else {
+        posNS_EW = 1;
+        degree = -degree;
+    }
+	
+    int16_t deg = int (degree) ;
+    float mmmm = 60 * ( degree - deg );
+    int16_t minu = (int( mmmm ));
+    mmmm -= minu;
+    degSeconds = mmmm*1E4;
+    degMinutes = (deg*100) + minu;
+}
+
 void hott_send_gps_msg(int uart) {
 	struct HOTT_GPS_MSG msg;
 
@@ -517,81 +535,30 @@ void hott_send_gps_msg(int uart) {
         	break;
     	}
 	}
-	
-	//TODO: fix this...
-	//latitude
-	{
-		float coor = ap_data.latitude / (float)10000000.0;
-		if(coor < (float)0.0)
-			coor *= (float)-1.0;
-		int lat = coor;  //degree
-		coor -= lat;
-		lat *= 100;
-  
-		coor *= 60;
-		int tmp = coor;  //minutes
-		lat += tmp;	
-		//seconds
-		coor -= tmp;
-		coor *= (float)10000.0;
-		int lat_sec = coor;
-		//
-		// Longitude
-		coor = ap_data.longitude / (float)10000000.0;
-		if(coor < (float)0.0)
-			coor *= (float)-1.0;
-		int lng = coor;
-		coor -= lng;
-		lng *= 100;
-  
-		coor *= 60;
-		tmp = coor;  //minutes
-		lng += tmp;
-		//seconds
-		coor -= tmp;
-		coor *= (float)10000.0;
-		int lng_sec = coor;
-	
-		if(ap_data.latitude > 0) {
-			msg.pos_NS = 0;	//north
-		} else {
-			msg.pos_NS = 1; //south
-		}
-	
-	  (uint16_t &)msg.pos_NS_dm_L = lat;
-	  (uint16_t &)msg.pos_NS_sec_L = lat_sec;
-  
-	  if(ap_data.longitude >= 0) {
-		 msg.pos_EW = 0; //east
-	  } else {
-		 msg.pos_EW = 1; //west
-	  }
-	  (uint16_t &)msg.pos_EW_dm_L = lng;
-	  (uint16_t &)msg.pos_EW_sec_L = lng_sec;
 
-	  (uint16_t &)msg.altitude_L = (ap_data.altitude_rel / 100)+500;  //meters above ground
+	convertLatLong(ap_data.latitude, (uint8_t &)msg.pos_NS, (uint16_t &)msg.pos_NS_dm_L, (uint16_t &)msg.pos_NS_sec_L);
+	convertLatLong(ap_data.longitude, (uint8_t &)msg.pos_EW, (uint16_t &)msg.pos_EW_dm_L, (uint16_t &)msg.pos_EW_sec_L);
 
-	  (int16_t &)msg.climbrate_L = 30000 + ap_data.climbrate;  
-	  msg.climbrate3s = 120;// + (ap_data.climb_rate / 100);  // 0 m/3s
+	(uint16_t &)msg.altitude_L = (ap_data.altitude_rel / 100)+500;  //meters above ground
+	(int16_t &)msg.climbrate_L = 30000 + ap_data.climbrate;  
+	msg.climbrate3s = 120;// + (ap_data.climb_rate / 100);  // 0 m/3s
+	msg.gps_satelites = ap_data.satelites;
+	
+	msg.angle_roll = ap_data.angle_roll / 200;
+	msg.angle_nick = ap_data.angle_nick / 200;
   
-	  msg.gps_satelites = ap_data.satelites;
-  
-	  msg.angle_roll = ap_data.angle_roll / 200;
-	  msg.angle_nick = ap_data.angle_nick / 200;
-  
-	  msg.angle_compass = ap_data.angle_compas / 2;
-	  //hott_gps_msg.flight_direction = hott_gps_msg.angle_compass;	//
+	msg.angle_compass = ap_data.angle_compas / 2;
+	//hott_gps_msg.flight_direction = hott_gps_msg.angle_compass;	//
 
-	  uint32_t t = ap_data.utc_time;
-	  msg.gps_time_h = t / 3600000;
-	  t -= (msg.gps_time_h * 3600000);
+	uint32_t t = ap_data.utc_time;
+	msg.gps_time_h = t / 3600000;
+	t -= (msg.gps_time_h * 3600000);
   
-	  msg.gps_time_m = t / 60000;
-	  t -= msg.gps_time_m * 60000;
+	msg.gps_time_m = t / 60000;
+	t -= msg.gps_time_m * 60000;
   
-	  msg.gps_time_s = t / 1000;
-	  msg.gps_time_sss = t - (msg.gps_time_s * 1000);
-	}
+	msg.gps_time_s = t / 1000;
+	msg.gps_time_sss = t - (msg.gps_time_s * 1000);
 	
 	send_data(uart, (uint8_t *)&msg, sizeof(struct HOTT_GPS_MSG));
 }
