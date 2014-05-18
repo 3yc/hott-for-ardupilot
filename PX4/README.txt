@@ -36,7 +36,7 @@ The HoTT code uses per default /dev/ttyS1 on PX4 and /dev/ttyS6 on Pixhawk. You 
 ttySx <-> UARTx mapping:
 ===========================
 Device	PX4		Pixhawk
-ttyS0	UART1	UART3
+ttyS0	UART1	UART3 (TELEM2)
 ttyS1	UART2	UART2 (TELEM1)
 ttyS2	UART5	UART
 ttyS3	UART6	UART
