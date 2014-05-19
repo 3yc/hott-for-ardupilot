@@ -10,24 +10,20 @@ config:
 	echo -— please edit ardupilot/config.mk to match your needs —-
 
 hott-patch:
-	cp *.pde ardupilot/ArduCopter
-	cp APM_Config.h ardupilot/ArduCopter/APM_Config.h
+	cp -Rf hott-apm-code/ardupilot/* ardupilot
 
 # build quad version
 quad: hott-patch
-	echo "#define CONFIG_APM_HARDWARE APM_HARDWARE_APM2" >> ardupilot/ArduCopter/APM_Config.h
 	echo "#define FRAME_CONFIG QUAD_FRAME" >> ardupilot/ArduCopter/APM_Config.h
 	echo "#define FRAME_ORIENTATION X_FRAME" >> ardupilot/ArduCopter/APM_Config.h
 	cd ardupilot/ArduCopter; $(MAKE) 
 
 hexa: hott-patch
-	echo "#define CONFIG_APM_HARDWARE APM_HARDWARE_APM2" >> ardupilot/ArduCopter/APM_Config.h
 	echo "#define FRAME_CONFIG HEXA_FRAME" >> ardupilot/ArduCopter/APM_Config.h
 	echo "#define FRAME_ORIENTATION X_FRAME" >> ardupilot/ArduCopter/APM_Config.h
 	cd ardupilot/ArduCopter; $(MAKE) 
 
 tri: hott-patch
-	echo "#define CONFIG_APM_HARDWARE APM_HARDWARE_APM2" >> ardupilot/ArduCopter/APM_Config.h
 	echo "#define FRAME_CONFIG TRI_FRAME" >> ardupilot/ArduCopter/APM_Config.h
 	echo "#define FRAME_ORIENTATION X_FRAME" >> ardupilot/ArduCopter/APM_Config.h
 	cd ardupilot/ArduCopter; $(MAKE) 

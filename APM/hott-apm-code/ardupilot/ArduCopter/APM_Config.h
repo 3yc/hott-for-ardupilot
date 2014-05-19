@@ -2,7 +2,7 @@
 
 // Example config file. Take a look at config.h. Any term define there can be overridden by defining it here.
 
-//#define CONFIG_APM_HARDWARE APM_HARDWARE_APM2
+#define CONFIG_APM_HARDWARE APM_HARDWARE_APM2
 
 // Ordinary users should please ignore the following define.
 // APM2_BETA_HARDWARE is used to support early (September-October 2011) APM2
@@ -85,3 +85,5 @@
 //Textmode address to simulate
 #define HOTT_SIM_TEXTMODE_ADDRESS	HOTT_TELEMETRY_GPS_SENSOR_ID
 //#define CONFIG_SONAR_SOURCE_ANALOG_PIN 0
+#define FRAME_CONFIG HEXA_FRAME
+#define FRAME_ORIENTATION X_FRAME
