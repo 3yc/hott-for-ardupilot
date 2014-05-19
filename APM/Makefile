@@ -20,7 +20,12 @@ quad: hott-patch
 	cd ardupilot/ArduCopter; $(MAKE) 
 
 hexa: hott-patch
-	echo "#define FRAME_CONFIG QUAD_FRAME" >> ardupilot/ArduCopter/APM_Config.h
+	echo "#define FRAME_CONFIG HEXA_FRAME" >> ardupilot/ArduCopter/APM_Config.h
+	echo "#define FRAME_ORIENTATION X_FRAME" >> ardupilot/ArduCopter/APM_Config.h
+	cd ardupilot/ArduCopter; $(MAKE) 
+
+tri: hott-patch
+	echo "#define FRAME_CONFIG TRI_FRAME" >> ardupilot/ArduCopter/APM_Config.h
 	echo "#define FRAME_ORIENTATION X_FRAME" >> ardupilot/ArduCopter/APM_Config.h
 	cd ardupilot/ArduCopter; $(MAKE) 
 
