@@ -1,0 +1,3 @@
+[submodule "APM/ardupilot"]
+	path = APM/ardupilot
+	url = git://github.com/diydrones/ardupilot.git

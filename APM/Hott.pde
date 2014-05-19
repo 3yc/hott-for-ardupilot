@@ -22,13 +22,13 @@
 #ifdef HOTT_TELEMETRY
 
 #if HOTT_TELEMETRY_SERIAL_PORT == 2
-	//FastSerialPort2(Serial2);      //HOTT serial port
-	#define _HOTT_PORT	hal.uartC
+	FastSerialPort2(Serial2);      //HOTT serial port
+	#define _HOTT_PORT	Serial2
 #endif
 #if HOTT_TELEMETRY_SERIAL_PORT == 3
-	//FastSerialPort3(Serial3);      //HOTT serial port
+	FastSerialPort3(Serial3);      //HOTT serial port
 	#error Not supported yet
-//	#define _HOTT_PORT	hal.uartC
+	#define _HOTT_PORT	Serial3
 #endif
 
 #ifndef HOTT_TELEMETRY_SERIAL_PORT
@@ -537,15 +537,15 @@ void _hott_send_telemetry_data() {
     _hott_telemetry_sendig_msgs_id = 0;	//clear current hott msg id
     msg_crc = 0;
     _hott_enable_receiver();
-    _HOTT_PORT->flush();
+    _HOTT_PORT.flush();
   } else {
     --_hott_msg_len;
     if(_hott_msg_len != 0) {
        	msg_crc += *_hott_msg_ptr; 
-	    _HOTT_PORT->write(*_hott_msg_ptr++);
+	    _HOTT_PORT.write(*_hott_msg_ptr++);
     } else {
     	//last int8_t, send crc
-	    _HOTT_PORT->write((int8_t) (msg_crc));
+	    _HOTT_PORT.write((int8_t) (msg_crc));
     }
   }
 }
@@ -554,10 +554,10 @@ void _hott_send_telemetry_data() {
   Onetime setup for HoTT
 */
 void _hott_setup() { 
-  _HOTT_PORT->begin(19200);
+  _HOTT_PORT.begin(19200);
   _hott_enable_receiver();
 //check AVR_SCHEDULER_MAX_TIMER_PROCS
-	hal.scheduler->register_timer_process(_hott_serial_scheduler);
+  timer_scheduler.register_process(_hott_serial_scheduler);
   //init msgs
   _hott_msgs_init();  //set default values  
 }
@@ -569,8 +569,8 @@ void _hott_setup() {
 void _hott_check_serial_data(uint32_t tnow) {
 	static uint32_t _hott_serial_request_timer = 0;
 	if(_hott_telemetry_is_sending == true) return;
-    if(_HOTT_PORT->available() > 1) {
-      if(_HOTT_PORT->available() == 2) {
+    if(_HOTT_PORT.available() > 1) {
+      if(_HOTT_PORT.available() == 2) {
         if(_hott_serial_request_timer == 0) {
         	//new request, check required
         	_hott_serial_request_timer = tnow;	//save timestamp
@@ -581,8 +581,8 @@ void _hott_check_serial_data(uint32_t tnow) {
         	_hott_serial_request_timer = 0;	//clean timer
         }
         // we never reach this point if there is additionally data on bus, so is has to be valid request
-        unsigned char c = _HOTT_PORT->read();
-        unsigned char addr = _HOTT_PORT->read();
+        unsigned char c = _HOTT_PORT.read();
+        unsigned char addr = _HOTT_PORT.read();
         //ok, we have a valid request, check for address
         switch(c) {
 //*****************************************************************************
@@ -643,7 +643,7 @@ void _hott_check_serial_data(uint32_t tnow) {
         }
       } else {
         //ignore data from other sensors
-        _HOTT_PORT->flush();
+        _HOTT_PORT.flush();
         _hott_serial_request_timer = 0;
       }
     }
@@ -744,7 +744,7 @@ void _hott_update_gps_msg() {
   (int &)hott_gps_msg.gps_speed_L = (int)((float)(g_gps->ground_speed * 0.036));
 
   
-  if(g_gps->status() == GPS::GPS_OK_FIX_3D) {
+  if(g_gps->status() == GPS::GPS_OK) {
     hott_gps_msg.alarm_invers2 = 0;
     hott_gps_msg.gps_fix_char = '3';  
     hott_gps_msg.free_char3 = '3';  //3D Fix according to specs...
