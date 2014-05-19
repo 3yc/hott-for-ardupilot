@@ -736,6 +736,26 @@ void _hott_update_eam_msg() {
 #endif
 
 #ifdef HOTT_SIM_GPS_SENSOR
+
+void convertLatLong(float degree, uint8_t &posNS_EW, uint16_t &degMinutes, uint16_t &degSeconds) {
+	degree = degree / 10000000.0f;
+    if (degree >= 0) {
+        posNS_EW = 0;
+        }
+    else {
+        posNS_EW = 1;
+        degree = -degree;
+    }
+	
+    int16_t deg = int (degree) ;
+    float mmmm = 60 * ( degree - deg );
+    int16_t minu = (int( mmmm ));
+    mmmm -= minu;
+    degSeconds = mmmm*1E4;
+    degMinutes = (deg*100) + minu;
+}
+
+
 // Updates GPS message values
 void _hott_update_gps_msg() { 
   // update GPS telemetry data
@@ -781,56 +801,8 @@ void _hott_update_gps_msg() {
           break;
         }
 	}
-
-  
-  //
-  //latitude
-  float coor = current_loc.lat / 10000000.0;
-  if(coor < 0.0)
-    coor *= -1.0;
-  int lat = coor;  //degree
-  coor -= lat;
-  lat *= 100;
-  
-  coor *= 60;
-  int tmp = coor;  //minutes
-  lat += tmp;
-  //seconds
-  coor -= tmp;
-  coor *= 10000.0;
-  int lat_sec = coor;
-  //
-  // Longitude
-  coor = current_loc.lng / 10000000.0;
-  if(coor < 0.0)
-    coor *= -1.0;
-  int lng = coor;
-  coor -= lng;
-  lng *= 100;
-  
-  coor *= 60;
-  tmp = coor;  //minutes
-  lng += tmp;
-  //seconds
-  coor -= tmp;
-  coor *= 10000.0;
-  int lng_sec = coor;
-  
-  if(current_loc.lat >= 0) {
-    hott_gps_msg.pos_NS = 0;  //north
-  } else {
-    hott_gps_msg.pos_NS = 1;  //south
-  }
-  (int &)hott_gps_msg.pos_NS_dm_L = (int)lat;
-  (int &)hott_gps_msg.pos_NS_sec_L = (int)(lat_sec);
-  
-  if(current_loc.lng >= 0) {
-     hott_gps_msg.pos_EW = 0; //east
-  } else {
-     hott_gps_msg.pos_EW = 1; //west
-  }
-  (int &)hott_gps_msg.pos_EW_dm_L = (int)(lng);
-  (int &)hott_gps_msg.pos_EW_sec_L = (int)(lng_sec);
+  convertLatLong(current_loc.lat, (uint8_t &)hott_gps_msg.pos_NS, (uint16_t &)hott_gps_msg.pos_NS_dm_L, (uint16_t &)hott_gps_msg.pos_NS_sec_L);
+  convertLatLong(current_loc.lng, (uint8_t &)hott_gps_msg.pos_EW, (uint16_t &)hott_gps_msg.pos_EW_dm_L, (uint16_t &)hott_gps_msg.pos_EW_sec_L);
   
   (int &)hott_gps_msg.altitude_L = (int)((current_loc.alt - home.alt) / 100)+500;  //meters above ground
 

@@ -3,6 +3,8 @@
 .PHONY: bl bl-flash config quad v1-upload v2-upload px4-hott clean
 
 #Create ArduCopter config
+all:
+
 config:
 	cd ardupilot/ArduCopter; $(MAKE) configure
 	echo -— please edit ardupilot/config.mk to match your needs —-
