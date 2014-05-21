@@ -11,7 +11,7 @@
 // Free Software Foundation; either version 2.1 of the License, or (at
 // your option) any later version.
 //
-// Check project homepage at https://code.google.com/p/hott-for-ardupilot/
+// Check project homepage at https://github.com/3yc/hott-for-ardupilot
 //
 // 01/2013 by Adam Majerczyk (majerczyk.adam@gmail.com)
 // Texmode add-on by Michi (mamaretti32@gmail.com)
