@@ -274,27 +274,27 @@ struct HOTT_EAM_MSG {
 	int8_t current_L;			//#29 Current in 0.1 steps
 	int8_t current_H;			//#30
 	
-	int8_t main_voltage_L;		//#30 Main power voltage (drive) in 0.1V steps
-	int8_t main_voltage_H;		//#31
+	int8_t main_voltage_L;		//#31 Main power voltage (drive) in 0.1V steps
+	int8_t main_voltage_H;		//#32
 	
-	int8_t batt_cap_L;			//#32 used battery capacity in 10mAh steps
-	int8_t batt_cap_H;			//#33
+	int8_t batt_cap_L;			//#33 used battery capacity in 10mAh steps
+	int8_t batt_cap_H;			//#34
 	
-	int8_t climbrate_L;			//#34 climb rate in 0.01m/s. Value of 30000 = 0.00 m/s
-	int8_t climbrate_H;			//#35
+	int8_t climbrate_L;			//#35 climb rate in 0.01m/s. Value of 30000 = 0.00 m/s
+	int8_t climbrate_H;			//#36
 	
-	int8_t climbrate3s;			//#36 climbrate in m/3sec. Value of 120 = 0m/3sec
+	int8_t climbrate3s;			//#37 climbrate in m/3sec. Value of 120 = 0m/3sec
 	
-	int8_t rpm_L;				//#37 RPM. Steps: 10 U/min
-	int8_t rpm_H;				//#38
+	int8_t rpm_L;				//#38 RPM. Steps: 10 U/min
+	int8_t rpm_H;				//#39
 	
-	int8_t electric_min;		//#39 Electric minutes. Time does start, when motor current is > 3 A
-	int8_t electric_sec;		//#40
+	int8_t electric_min;		//#40 Electric minutes. Time does start, when motor current is > 3 A
+	int8_t electric_sec;		//#41
 	
-	int8_t speed_L;				//#41 (air?) speed in km/h. Steps 1km/h
-	int8_t speed_H;				//#42
-	int8_t stop_byte;			//#43 stop int8_t
-	int8_t parity;				//#44 CRC/Parity
+	int8_t speed_L;				//#42 (air?) speed in km/h. Steps 1km/h
+	int8_t speed_H;				//#43
+	int8_t stop_byte;			//#44 stop int8_t
+	int8_t parity;				//#45 CRC/Parity
 };
 
 //HoTT GPS Sensor response to Receiver (?!not?! Smartbox)
