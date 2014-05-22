@@ -53,6 +53,7 @@
 
 //HoTT alarm macro
 #define HOTT_ALARM_NUM(a) (a-0x40)
+#define ALTITUDE_HISTORY_DATA_COUNT	10
 
 struct _hott_alarm_event_T {
 	uint16_t alarm_time; 		//Alarm play time in 1sec units
@@ -88,6 +89,7 @@ void hott_handle_binary_mode(int uart, uint8_t moduleId);
 void hott_send_vario_msgs(int uart);
 void hott_send_eam_msg(int uart);
 void hott_send_gps_msg(int uart);
+void convertLatLong(float degree, uint8_t &posNS_EW, uint16_t &degMinutes, uint16_t &degSeconds);
 bool checkTopic(int topic);
 
 bool _hott_alarm_active_exists(struct _hott_alarm_event_T *alarm);
@@ -106,6 +108,12 @@ static int ap_hott_task;				/**< Handle of deamon task / thread */
 static const char commandline_usage[] = "usage: ap_hott start|status|stop [-d <device>]\n      default device is ttyS1";
 static int thread_should_exit = false;		/**< Deamon exit flag */
 static int thread_running = false;		/**< Deamon status flag */
+
+//for vario calculations
+static int climbrate1s = 0;
+static int climbrate3s = 0;
+static int climbrate10s = 0;
+
 
 //ORB ids
 static int _battery_sub = -1;
@@ -232,6 +240,7 @@ int ap_hott_main(int argc, char *argv[])
 		errx(1, "missing command\n%s", commandline_usage);
 	}
 	
+	//TODO: move command start/stop/status behind parameters
 	if (!strcmp(argv[1], "start")) {
 		if (thread_running) {
 			warnx("deamon already running");
@@ -274,6 +283,39 @@ void initOrbSubs(void) {
 	_apData_sub = orb_subscribe(ORB_ID(ap_data));
 }
 
+//
+// calculates and maintans climbrate changes
+// called every 1s with current altitude as input
+//
+void processClimbrate(int16_t currentAltitude) {
+	static int16_t altitudeData[ALTITUDE_HISTORY_DATA_COUNT];	//all values in cm
+	static int8_t nextData = -1;
+	
+	//clear data?
+	if(nextData == -1) {
+		for(int i=0; i<ALTITUDE_HISTORY_DATA_COUNT; i++)
+			altitudeData[i] = 0;
+		nextData = 0;
+	}
+	
+	//save next altitude data
+	altitudeData[nextData++] = currentAltitude;
+	if(nextData >= ALTITUDE_HISTORY_DATA_COUNT)
+		nextData = 0;
+	
+	int8_t x = (nextData == 0) ? ALTITUDE_HISTORY_DATA_COUNT - 1 : nextData -1;
+	int8_t y = (x - 1 < 0) ? ALTITUDE_HISTORY_DATA_COUNT - 1 : x -1;
+	climbrate1s = altitudeData[y] - altitudeData[x];
+
+	y = (x - 2 < 0) ? ALTITUDE_HISTORY_DATA_COUNT - (x-2) : x - 2;
+	climbrate3s = altitudeData[y] - altitudeData[x];
+
+#if ALTITUDE_HISTORY_DATA_COUNT != 10
+#error "ALTITUDE_HISTORY_DATA_COUNT has to be 10... or adapt the code below!"
+#endif
+	climbrate10s = altitudeData[y] - altitudeData[nextData];
+}
+
 int ap_hott_thread_main(int argc, char *argv[]) {
 	struct timespec t;
 	time_t	secOld = 0;
@@ -297,7 +339,7 @@ int ap_hott_thread_main(int argc, char *argv[]) {
 		if(device != NULL) {
 			const int uart = open_uart(device);
 			if (uart < 0) {
-				errx(1, "Failed opening HoTT UART, exiting.");
+				errx(1, "Failed to open HoTT UART, exiting.");
 				thread_running = false;
 			} else {
 				//init ORB subscriptions
@@ -306,8 +348,8 @@ int ap_hott_thread_main(int argc, char *argv[]) {
 				while(!thread_should_exit) {
 					uint8_t mode = 0;
 					uint8_t moduleId = 0;
+					updateOrbs();
 					if(recv_req_id(uart, &mode, &moduleId) == OK) {
-						updateOrbs();
 						switch(mode) {
 							case HOTT_TEXT_MODE_REQUEST_ID:
 								hott_handle_text_mode(uart, moduleId);
@@ -320,11 +362,11 @@ int ap_hott_thread_main(int argc, char *argv[]) {
 								break;
 						}
 					}
-					//Alarm check every 1sec
+					//Things to be done every 1 sec
 					if(clock_gettime(CLOCK_REALTIME, &t) == OK) {
 						if(t.tv_sec != secOld) {
-							//at least 1 sec
 							secOld = t.tv_sec;
+							processClimbrate(ap_data.altitude); // update vario data
 //							warnx("tick");
 //							hott_check_alarm();
 //							hott_alarm_scheduler();
@@ -347,22 +389,19 @@ void hott_handle_text_mode(int uart, uint8_t moduleId) {
 void hott_handle_binary_mode(int uart, uint8_t moduleId) {
 	switch(moduleId) {
 		case HOTT_TELEMETRY_GPS_SENSOR_ID:
-//			warnx("GPS");
 			hott_send_gps_msg(uart);
 			break;
 		case HOTT_TELEMETRY_EAM_SENSOR_ID:
-//			warnx("EAM");
 			hott_send_eam_msg(uart);
 			break;
 		case HOTT_TELEMETRY_VARIO_SENSOR_ID:
-//			warnx("VARIO");
 			hott_send_vario_msgs(uart);
 			break;
 		case HOTT_TELEMETRY_GAM_SENSOR_ID:
-//			warnx("GAM");
+			warnx("GAM not supported yet");
 			break;
 		case HOTT_TELEMETRY_AIRESC_SENSOR_ID:
-//			warnx("AIRESC");
+			warnx("AIRESC  not supported yet");
 			break;
 		case HOTT_TELEMETRY_NO_SENSOR_ID:
 //			warnx("NO SENSOR?");
@@ -415,9 +454,9 @@ void hott_send_vario_msgs(int uart) {
 		min_altitude = ap_data.altitude_rel;
 	(int16_t &)msg.altitude_min_L = (min_altitude / 100)+500;
 
-	(int16_t &)msg.climbrate_L = 30000 + ap_data.climbrate;
-	(int16_t &)msg.climbrate3s_L = 30000 + ap_data.climbrate;	//TODO: calc this
-	(int16_t &)msg.climbrate10s_L = 30000 + ap_data.climbrate;	//TODO: calc this stuff
+	(int16_t &)msg.climbrate_L = 30000 + climbrate1s;
+	(int16_t &)msg.climbrate3s_L = 30000 + climbrate3s;
+	(int16_t &)msg.climbrate10s_L = 30000 + climbrate10s;
 	
 	msg.compass_direction = ap_data.angle_compas;
 	
@@ -455,8 +494,8 @@ void hott_send_eam_msg(int uart) {
 	msg.temp2 = ap_data.temperature2 + 20;
 	(int16_t &)msg.altitude_L = ap_data.altitude;
 	(uint16_t &)msg.speed_L = ap_data.groundSpeed;
-  	(uint16_t &)msg.climbrate_L = ap_data.climbrate;
-  	msg.climbrate3s = 120 + (ap_data.climbrate / 100);  // 0 m/3s using filtered data here
+  	(uint16_t &)msg.climbrate_L = climbrate1s;
+  	msg.climbrate3s = 120 + (climbrate3s / 100);  // 0 m/3s using filtered data here
   	
 	//display ON when motors are armed
     if (ap_data.motor_armed) {
@@ -540,8 +579,8 @@ void hott_send_gps_msg(int uart) {
 	convertLatLong(ap_data.longitude, (uint8_t &)msg.pos_EW, (uint16_t &)msg.pos_EW_dm_L, (uint16_t &)msg.pos_EW_sec_L);
 
 	(uint16_t &)msg.altitude_L = (ap_data.altitude_rel / 100)+500;  //meters above ground
-	(int16_t &)msg.climbrate_L = 30000 + ap_data.climbrate;  
-	msg.climbrate3s = 120;// + (ap_data.climb_rate / 100);  // 0 m/3s
+	(int16_t &)msg.climbrate_L = 30000 + climbrate1s;  
+	msg.climbrate3s = 120 + (climbrate3s / 100);  // 0 m/3s
 	msg.gps_satelites = ap_data.satelites;
 	
 	msg.angle_roll = ap_data.angle_roll / 200;
