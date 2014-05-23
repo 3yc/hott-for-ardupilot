@@ -94,6 +94,27 @@ void userhook_SlowLoop()
 	apData.timestamp = hal.scheduler->micros();
 	apData.battery1_v = 0;
 	apData.battery2_v = 0;
+	
+	enum ap_var_type	var_type;
+	AP_Param      *vp;
+	vp =AP_Param::find("BATT_CAPACITY", &var_type);
+	if(vp != NULL) {
+		if(var_type == AP_PARAM_INT32) {
+			apData.battery_pack_capacity = ((AP_Int32 *)vp)->get();
+		}
+	} else {
+		apData.battery_pack_capacity = 0;	//not found
+	}
+	
+	vp = AP_Param::find("FS_BATT_VOLTAGE", &var_type);	//we are using failsafe voltage since old LOW_VOLT is not available
+	if(vp != NULL) {
+		if(var_type == AP_PARAM_FLOAT) {
+			apData.main_battery_low_voltage = ((AP_Float *)vp)->get();
+		}
+	} else {
+		apData.main_battery_low_voltage = 0.0f;
+	}
+
 	apData.temperature1 = barometer.get_temperature();
 	apData.temperature2 = 0;
 	apData.altitude = gps.location().alt;

@@ -38,6 +38,8 @@ struct ap_data_s {
 
 	uint16_t	battery1_v;	//Battery 1 voltage
 	uint16_t	battery2_v;	//Battery 2 voltage
+	uint32_t	battery_pack_capacity;	//Battery capacity in mAh
+	float		main_battery_low_voltage;	//Minimal voltage of the main battery
 	
 	float		temperature1;	//scale °C
 	float		temperature2;	//scale °C
