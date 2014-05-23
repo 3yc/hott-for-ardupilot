@@ -95,13 +95,17 @@ bool checkTopic(int topic);
 bool _hott_alarm_active_exists(struct _hott_alarm_event_T *alarm);
 bool _hott_alarm_replay_exists(struct _hott_alarm_event_T *alarm);
 bool _hoot_alarm_exists(struct _hott_alarm_event_T *alarm);
-void _hott_add_alarm(struct _hott_alarm_event_T *alarm);
+bool _hott_add_alarm(struct _hott_alarm_event_T *alarm);
 void _hott_add_replay_alarm(struct _hott_alarm_event_T *alarm);
 void _hott_remove_alarm(uint8_t num);
 void _hott_remove_replay_alarm(uint8_t num);
 void hott_update_replay_queue(void);
 void hott_check_alarm(void);
 void hott_alarm_scheduler(void);
+uint8_t getAlarmForProfileId(uint8_t hottProfileId, _hott_alarm_event &e);
+
+void hott_eam_check_mAh();
+void hott_eam_check_mainPower();
 
 //variables
 static int ap_hott_task;				/**< Handle of deamon task / thread */
@@ -113,6 +117,9 @@ static int thread_running = false;		/**< Deamon status flag */
 static int climbrate1s = 0;
 static int climbrate3s = 0;
 static int climbrate10s = 0;
+
+//HoTT alarms
+static uint8_t activeAlarm = 0;	//Current active voice alarm number
 
 
 //ORB ids
@@ -351,6 +358,7 @@ int ap_hott_thread_main(int argc, char *argv[]) {
 			} else {
 				//init ORB subscriptions
 				initOrbSubs();
+
 				//main loop
 				while(!thread_should_exit) {
 					uint8_t mode = 0;
@@ -375,9 +383,9 @@ int ap_hott_thread_main(int argc, char *argv[]) {
 							secOld = t.tv_sec;
 							processClimbrate(ap_data.altitude); // update vario data
 //							warnx("tick");
-//							hott_check_alarm();
-//							hott_alarm_scheduler();
-//							hott_update_replay_queue();						
+							hott_check_alarm();
+							hott_alarm_scheduler();
+							hott_update_replay_queue();						
 						}
 					}
 				}
@@ -405,10 +413,10 @@ void hott_handle_binary_mode(int uart, uint8_t moduleId) {
 			hott_send_vario_msgs(uart);
 			break;
 		case HOTT_TELEMETRY_GAM_SENSOR_ID:
-			warnx("GAM not supported yet");
+//			warnx("GAM not supported yet");
 			break;
 		case HOTT_TELEMETRY_AIRESC_SENSOR_ID:
-			warnx("AIRESC  not supported yet");
+//			warnx("AIRESC  not supported yet");
 			break;
 		case HOTT_TELEMETRY_NO_SENSOR_ID:
 //			warnx("NO SENSOR?");
@@ -486,7 +494,8 @@ void hott_send_vario_msgs(int uart) {
 
 void hott_send_eam_msg(int uart) {
 	struct HOTT_EAM_MSG msg;
-
+    static _hott_alarm_event e = {0,0,0,0,0,0};	//used to save visual alarm states
+	
 	memset(&msg, 0, sizeof(struct HOTT_EAM_MSG));
 	msg.start_byte = 0x7c;
 	msg.eam_sensor_id = HOTT_TELEMETRY_EAM_SENSOR_ID;
@@ -499,17 +508,23 @@ void hott_send_eam_msg(int uart) {
 	(uint16_t &)msg.batt_cap_L = (uint16_t)(battery.discharged_mah / (float)10.0);
 	msg.temp1 = ap_data.temperature1 + 20;
 	msg.temp2 = ap_data.temperature2 + 20;
-	(int16_t &)msg.altitude_L = ap_data.altitude;
+	(int16_t &)msg.altitude_L = ap_data.altitude + 500;
 	(uint16_t &)msg.speed_L = ap_data.groundSpeed;
   	(uint16_t &)msg.climbrate_L = climbrate1s;
   	msg.climbrate3s = 120 + (climbrate3s / 100);  // 0 m/3s using filtered data here
-  	
-	//display ON when motors are armed
-    if (ap_data.motor_armed) {
-       msg.alarm_invers2 |= 0x80;
-     } else {
-       msg.alarm_invers2 &= 0x7f;
-     }
+  		 
+	 //check alarms
+	 if(getAlarmForProfileId(HOTT_TELEMETRY_EAM_SENSOR_ID, e) != 0) {
+		 msg.warning_beeps = e.alarm_num;
+	 }
+	 msg.alarm_invers1 = e.visual_alarm1;
+	 msg.alarm_invers2 = e.visual_alarm2;
+ 	//display ON when motors are armed
+     if (ap_data.motor_armed) {
+        msg.alarm_invers2 |= 0x80;
+      } else {
+        msg.alarm_invers2 &= 0x7f;
+      }
 	send_data(uart, (uint8_t *)&msg, sizeof(struct HOTT_EAM_MSG));
 }
 
@@ -656,15 +671,16 @@ bool _hoot_alarm_exists(struct _hott_alarm_event_T *alarm) {
 //
 // adds an alarm to active queue
 //
-void _hott_add_alarm(struct _hott_alarm_event_T *alarm) {
+bool _hott_add_alarm(struct _hott_alarm_event_T *alarm) {
 	if(alarm == 0)
-		return;
+		return false;
 	if(_hott_alarmCnt >= HOTT_ALARM_QUEUE_MAX)
-		return;	//no more space left...
+		return false;	//no more space left...
 	if(_hoot_alarm_exists(alarm)) 
-		return;
+		return false;
 	// we have a new alarm
 	memcpy(&_hott_alarm_queue[_hott_alarmCnt++], alarm, sizeof(struct _hott_alarm_event_T));
+	return true;
 }
 
 //
@@ -723,19 +739,39 @@ void hott_update_replay_queue(void) {
 	}
 }
 
+uint8_t getAlarmForProfileId(uint8_t hottProfileId, _hott_alarm_event &e) {
+	if(_hott_alarmCnt == 0)
+		return 0;
+
+	uint8_t alarmCount = 0;
+	for(int i=0; i< _hott_alarmCnt; i++) {
+		if(_hott_alarm_queue[i].alarm_profile == hottProfileId) {
+			e.visual_alarm1 |= _hott_alarm_queue[i].visual_alarm1;
+			e.visual_alarm2 |= _hott_alarm_queue[i].visual_alarm2;
+			if(i == activeAlarm-1) {
+				//this alarm is also active
+				e.alarm_num = _hott_alarm_queue[i].alarm_num;
+			}
+			alarmCount++;
+		}
+	}
+	return alarmCount;
+}
+
 //
 // active alarm scheduler
 //
 void hott_alarm_scheduler(void) {
 	static uint8_t activeAlarmTimer = 3* 50;
-	static uint8_t activeAlarm = 0;
 
+//	warnx("AC=%d AA=%d", _hott_alarmCnt, activeAlarm);
 	if(_hott_alarmCnt < 1)
 		return;	//no alarms	
 	
 	for(uint8_t i = 0; i< _hott_alarmCnt; i++) {
 		if(_hott_alarm_queue[i].alarm_time == 0) {
 			//end of alarm, remove it
+//			warnx("removing alarm %d", i+1);
 			if(_hott_alarm_queue[i].alarm_time_replay != 0)
 				_hott_add_replay_alarm(&_hott_alarm_queue[i]);
 			_hott_remove_alarm(i+1);	//first alarm at offset 1
@@ -743,27 +779,6 @@ void hott_alarm_scheduler(void) {
 			continue;
 		}
 	}
-#if 0		//
-		switch(_hott_alarm_queue[i].alarm_profile) {
-			case HOTT_TELEMETRY_EAM_SENSOR_ID:
-				a->vEam |= _hott_alarm_queue[i].visual_alarm1;
-				a->vEam2 |= _hott_alarm_queue[i].visual_alarm2;
-				break;
-			case HOTT_TELEMETRY_GPS_SENSOR_ID:
-				a->vGps |= _hott_alarm_queue[i].visual_alarm1;
-				a->vGps2 |= _hott_alarm_queue[i].visual_alarm2;
-				break;
-			case HOTT_TELEMETRY_VARIO_SENSOR_ID:
-				a->vVario |= _hott_alarm_queue[i].visual_alarm1;
-				break;
-			case HOTT_TELEMETRY_GAM_SENSOR_ID:
-				a->vGam |= _hott_alarm_queue[i].visual_alarm1;		
-				a->vGam2 |= _hott_alarm_queue[i].visual_alarm2;		
-				break;
-			default:
-				break;
-		}
-	} //end: visual alarm loop
 
 	if(activeAlarm != 0) { //is an alarm active
 		if ( ++activeAlarmTimer % 2 == 0 ) {	//every 1sec
@@ -781,8 +796,6 @@ void hott_alarm_scheduler(void) {
 		activeAlarm = 0;
 		return;
 	}
-//	_hott_set_voice_alarm(_hott_alarm_queue[activeAlarm-1].alarm_profile, _hott_alarm_queue[activeAlarm-1].alarm_num);
-#endif
 }
 
 
@@ -790,8 +803,42 @@ void hott_alarm_scheduler(void) {
 //
 //	alarm triggers to check
 //
-void hott_check_alarm()  {
-//	_hott_eam_check_mAh();
-//	_hott_eam_check_mainPower();
+void hott_check_alarm(void)  {
+	hott_eam_check_mAh();
+	hott_eam_check_mainPower();
 }
 
+//
+//	Check for used mAh
+//
+void hott_eam_check_mAh(void) {
+	_hott_alarm_event _hott_ema_alarm_event;
+	if( 4000.0f <= battery.discharged_mah) {	//TODO: get battery pack capacity from AC
+		_hott_ema_alarm_event.alarm_time = 6;	//1sec units
+		_hott_ema_alarm_event.alarm_time_replay = 15;	//1sec units
+		_hott_ema_alarm_event.visual_alarm1 = 0x01;	//blink mAh
+		_hott_ema_alarm_event.visual_alarm2 = 0;
+		_hott_ema_alarm_event.alarm_num = HOTT_ALARM_NUM('V');
+		_hott_ema_alarm_event.alarm_profile = HOTT_TELEMETRY_EAM_SENSOR_ID;
+		_hott_add_alarm(&_hott_ema_alarm_event);
+	}
+}
+
+//
+//	Check for low batteries
+//
+void hott_eam_check_mainPower(void){
+	if(battery.voltage_v < 10.0f) {		//TODO: get Battery min voltage from AC
+		_hott_alarm_event _hott_ema_alarm_event;
+		_hott_ema_alarm_event.alarm_time = 6;	//1sec units
+		_hott_ema_alarm_event.alarm_time_replay = 30; //1sec unit
+		_hott_ema_alarm_event.visual_alarm1 = 0x80;	//blink main power
+		_hott_ema_alarm_event.visual_alarm2 = 0;
+		_hott_ema_alarm_event.alarm_num = HOTT_ALARM_NUM('P');
+		_hott_ema_alarm_event.alarm_profile = HOTT_TELEMETRY_EAM_SENSOR_ID;
+
+		if(_hott_add_alarm(&_hott_ema_alarm_event)) {
+//			warnx("adding battery alarm");			
+		}
+	}
+}
