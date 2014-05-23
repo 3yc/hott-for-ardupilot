@@ -40,6 +40,7 @@
 #include <uORB/topics/ap_data.h>
 
 #include "../../ardupilot/libraries/AP_GPS/AP_GPS.h"
+#include "../../ardupilot/ArduCopter/defines.h"
 
 #include "hott_msgs.h"
 
@@ -119,6 +120,9 @@ static int thread_running = false;		/**< Deamon status flag */
 static int climbrate1s = 0;
 static int climbrate3s = 0;
 static int climbrate10s = 0;
+
+//"electirc time""
+uint32_t	electric_time = 0;	//time in ARMED mode in seconds
 
 //HoTT alarms
 static uint8_t activeAlarm = 0;	//Current active voice alarm number
@@ -387,7 +391,10 @@ int ap_hott_thread_main(int argc, char *argv[]) {
 //							warnx("tick");
 							hott_check_alarm();
 							hott_alarm_scheduler();
-							hott_update_replay_queue();						
+							hott_update_replay_queue();
+							//update electric tinme
+							if(ap_data.motor_armed)
+								electric_time++;	
 						}
 					}
 				}
@@ -514,6 +521,10 @@ void hott_send_eam_msg(int uart) {
 	(uint16_t &)msg.speed_L = ap_data.groundSpeed;
   	(uint16_t &)msg.climbrate_L = climbrate1s + 30000;
   	msg.climbrate3s = 120 + (climbrate3s / 100);  // 0 m/3s using filtered data here
+	
+	//Electric time. TIme the APM is ARMED
+	msg.electric_min = electric_time / 60;
+	msg.electric_sec = electric_time % 60;
   		 
 	 //check alarms
 	 if(getAlarmForProfileId(HOTT_TELEMETRY_EAM_SENSOR_ID, e) != 0) {
@@ -574,10 +585,10 @@ void hott_send_gps_msg(int uart) {
 		(uint16_t &)msg.home_distance_L = 0; // set distance to 0 since there is no GPS signal
 	  }
 
-  switch(ap_data.control_mode) {
+  switch(ap_data.control_mode) {	//see ArduCopter/defines.h for possible values
   //TODO: switch to APM enums
-	case 3:	//AUTO
-	case 5:	//LOITER
+	case AUTO:	//AUTO
+	case LOITER:	//LOITER
      //Use home direction field to display direction an distance to next waypoint
 		{
 			(uint16_t &)msg.home_distance_L = ap_data.wp_distance / 100;
