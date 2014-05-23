@@ -290,6 +290,7 @@ void initOrbSubs(void) {
 void processClimbrate(int16_t currentAltitude) {
 	static int16_t altitudeData[ALTITUDE_HISTORY_DATA_COUNT];	//all values in cm
 	static int8_t nextData = -1;
+	static bool gotAllDatapoints = false;
 	
 	//clear data?
 	if(nextData == -1) {
@@ -299,21 +300,27 @@ void processClimbrate(int16_t currentAltitude) {
 	}
 	
 	//save next altitude data
+	int8_t x = nextData;
 	altitudeData[nextData++] = currentAltitude;
-	if(nextData >= ALTITUDE_HISTORY_DATA_COUNT)
+	if(nextData == ALTITUDE_HISTORY_DATA_COUNT) {
 		nextData = 0;
+		if(!gotAllDatapoints) {
+			gotAllDatapoints = true;	//ready for calculations
+		}
+	}
+	if(!gotAllDatapoints)	//wait for all data points requred for calculation
+		return;
 	
-	int8_t x = (nextData == 0) ? ALTITUDE_HISTORY_DATA_COUNT - 1 : nextData -1;
 	int8_t y = (x - 1 < 0) ? ALTITUDE_HISTORY_DATA_COUNT - 1 : x -1;
 	climbrate1s = altitudeData[y] - altitudeData[x];
 
-	y = (x - 2 < 0) ? ALTITUDE_HISTORY_DATA_COUNT - (x-2) : x - 2;
+	y = (x - 2 < 0) ? ALTITUDE_HISTORY_DATA_COUNT + (x-2) : x - 2;
 	climbrate3s = altitudeData[y] - altitudeData[x];
 
 #if ALTITUDE_HISTORY_DATA_COUNT != 10
 #error "ALTITUDE_HISTORY_DATA_COUNT has to be 10... or adapt the code below!"
 #endif
-	climbrate10s = altitudeData[y] - altitudeData[nextData];
+	climbrate10s = altitudeData[nextData] - altitudeData[x];
 }
 
 int ap_hott_thread_main(int argc, char *argv[]) {
