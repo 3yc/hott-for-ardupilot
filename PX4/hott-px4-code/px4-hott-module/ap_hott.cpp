@@ -39,6 +39,8 @@
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/ap_data.h>
 
+#include "../../ardupilot/libraries/AP_GPS/AP_GPS.h"
+
 #include "hott_msgs.h"
 
 
@@ -62,7 +64,7 @@ struct _hott_alarm_event_T {
 	uint8_t visual_alarm1;		//Visual alarm bitmask
 	uint8_t visual_alarm2;		//Visual alarm bitmask
 	uint8_t alarm_num;			//Alarm number 0..255 (A-Z)
-	uint8_t alarm_profile;		//profile id ie HOTT_TELEMETRY_GPS_SENSOR_ID
+	uint8_t alarm_profile;		//profile id ie HOTT_TELEMETRY_EAM_SENSOR_ID
 };
 typedef struct _hott_alarm_event_T _hott_alarm_event;
 
@@ -381,7 +383,7 @@ int ap_hott_thread_main(int argc, char *argv[]) {
 					if(clock_gettime(CLOCK_REALTIME, &t) == OK) {
 						if(t.tv_sec != secOld) {
 							secOld = t.tv_sec;
-							processClimbrate(ap_data.altitude); // update vario data
+							processClimbrate(ap_data.altitude_rel); // update vario data
 //							warnx("tick");
 							hott_check_alarm();
 							hott_alarm_scheduler();
@@ -508,9 +510,9 @@ void hott_send_eam_msg(int uart) {
 	(uint16_t &)msg.batt_cap_L = (uint16_t)(battery.discharged_mah / (float)10.0);
 	msg.temp1 = ap_data.temperature1 + 20;
 	msg.temp2 = ap_data.temperature2 + 20;
-	(int16_t &)msg.altitude_L = ap_data.altitude + 500;
+	(int16_t &)msg.altitude_L = (ap_data.altitude / 100) + 500;
 	(uint16_t &)msg.speed_L = ap_data.groundSpeed;
-  	(uint16_t &)msg.climbrate_L = climbrate1s;
+  	(uint16_t &)msg.climbrate_L = climbrate1s + 30000;
   	msg.climbrate3s = 120 + (climbrate3s / 100);  // 0 m/3s using filtered data here
   		 
 	 //check alarms
@@ -560,7 +562,7 @@ void hott_send_gps_msg(int uart) {
   	msg.flight_direction = ap_data.groundCourse / 200; // in 2* steps
 	(uint16_t &)msg.gps_speed_L = (uint16_t)ap_data.groundSpeed;
 	
-	 if(ap_data.gps_sat_fix == 3) {	//see GPS class
+	 if(ap_data.gps_sat_fix == AP_GPS::GPS_OK_FIX_3D) {	//see GPS class
 		msg.alarm_invers2 = 0;
 		msg.gps_fix_char = '3';  
 		msg.free_char3 = '3';  //3D Fix according to specs...
@@ -813,7 +815,7 @@ void hott_check_alarm(void)  {
 //
 void hott_eam_check_mAh(void) {
 	_hott_alarm_event _hott_ema_alarm_event;
-	if( 4000.0f <= battery.discharged_mah) {	//TODO: get battery pack capacity from AC
+	if((ap_data.battery_pack_capacity < battery.discharged_mah) && (ap_data.battery_pack_capacity > 0 )) {
 		_hott_ema_alarm_event.alarm_time = 6;	//1sec units
 		_hott_ema_alarm_event.alarm_time_replay = 15;	//1sec units
 		_hott_ema_alarm_event.visual_alarm1 = 0x01;	//blink mAh
@@ -828,7 +830,7 @@ void hott_eam_check_mAh(void) {
 //	Check for low batteries
 //
 void hott_eam_check_mainPower(void){
-	if(battery.voltage_v < 10.0f) {		//TODO: get Battery min voltage from AC
+	if((battery.voltage_v < ap_data.main_battery_low_voltage)  && battery.voltage_v > 0.0) {
 		_hott_alarm_event _hott_ema_alarm_event;
 		_hott_ema_alarm_event.alarm_time = 6;	//1sec units
 		_hott_ema_alarm_event.alarm_time_replay = 30; //1sec unit
