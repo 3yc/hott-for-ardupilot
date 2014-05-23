@@ -470,11 +470,11 @@ void hott_send_vario_msgs(int uart) {
 	
 	(uint16_t &)msg.altitude_L = (ap_data.altitude_rel / 100)+500;	//send relative altitude
 	//update alt. statistic
-	if( ap_data.altitude_rel > max_altitude)
+	if( ap_data.altitude_rel > max_altitude && ap_data.motor_armed)	//calc only in ARMED mode
 		max_altitude = ap_data.altitude_rel;
 	(int16_t &)msg.altitude_max_L = (max_altitude / 100)+500;
 
-	if( ap_data.altitude_rel < min_altitude)
+	if( ap_data.altitude_rel < min_altitude && ap_data.motor_armed) //calc only in ARMED mode
 		min_altitude = ap_data.altitude_rel;
 	(int16_t &)msg.altitude_min_L = (min_altitude / 100)+500;
 
@@ -517,7 +517,7 @@ void hott_send_eam_msg(int uart) {
 	(uint16_t &)msg.batt_cap_L = (uint16_t)(battery.discharged_mah / (float)10.0);
 	msg.temp1 = ap_data.temperature1 + 20;
 	msg.temp2 = ap_data.temperature2 + 20;
-	(int16_t &)msg.altitude_L = (ap_data.altitude / 100) + 500;
+	(int16_t &)msg.altitude_L = (ap_data.altitude_rel / 100) + 500;
 	(uint16_t &)msg.speed_L = ap_data.groundSpeed;
   	(uint16_t &)msg.climbrate_L = climbrate1s + 30000;
   	msg.climbrate3s = 120 + (climbrate3s / 100);  // 0 m/3s using filtered data here
