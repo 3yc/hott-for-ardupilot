@@ -117,10 +117,10 @@ void userhook_SlowLoop()
 
 	apData.temperature1 = barometer.get_temperature();
 	apData.temperature2 = 0;
-	apData.altitude = gps.location().alt;
+	apData.altitude = current_loc.alt;
 	apData.altitude_rel = current_loc.alt - home.alt;	//in cm
-	apData.groundSpeed = ((float)((gps.ground_speed()) * 0.036));
-	apData.groundCourse = gps.ground_course_cd();
+	apData.groundSpeed = ((float)((g_gps->ground_speed_cm) * 0.036));
+	apData.groundCourse = g_gps->ground_course_cd;
 	apData.climbrate = climb_rate;
 	
 	apData.motor_armed = motors.armed();
@@ -132,14 +132,14 @@ void userhook_SlowLoop()
 	apData.wp_distance = wp_distance; //in cm
 	apData.wp_direction = wp_bearing; //in centi-degrees
 
-	apData.latitude = gps.location().lat;
-	apData.longitude = gps.location().lng;
-	apData.satelites = gps.num_sats();
-	apData.gps_sat_fix = gps.status();
+	apData.latitude = current_loc.lat;
+	apData.longitude = current_loc.lng;
+	apData.satelites = g_gps->num_sats;
+	apData.gps_sat_fix = g_gps->status();
 	apData.angle_roll = ahrs.roll_sensor;
 	apData.angle_nick = ahrs.pitch_sensor;
 	apData.angle_compas = ToDeg(compass.calculate_heading(ahrs.get_dcm_matrix())) ;
-	apData.utc_time = gps.time_week_ms() % (60 * 60 * 24 * 7);
+	apData.utc_time = g_gps->time_week_ms % (60 * 60 * 24 * 7);
 
 	orb_publish(ORB_ID(ap_data), hApDataTopic, &apData);
 	

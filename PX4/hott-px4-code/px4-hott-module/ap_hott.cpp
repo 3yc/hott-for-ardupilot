@@ -573,7 +573,7 @@ void hott_send_gps_msg(int uart) {
   	msg.flight_direction = ap_data.groundCourse / 200; // in 2* steps
 	(uint16_t &)msg.gps_speed_L = (uint16_t)ap_data.groundSpeed;
 	
-	 if(ap_data.gps_sat_fix == AP_GPS::GPS_OK_FIX_3D) {	//see GPS class
+	 if(ap_data.gps_sat_fix == GPS::GPS_OK_FIX_3D) {	//see GPS class
 		msg.alarm_invers2 = 0;
 		msg.gps_fix_char = '3';  
 		msg.free_char3 = '3';  //3D Fix according to specs...

@@ -8,7 +8,6 @@
 ROMFS_ROOT	 = $(SKETCHBOOK)/mk/PX4/ROMFS
 
 MODULES		+= $(APM_MODULE_DIR)
-MODULES		+= ./../../hott-px4-code/px4-hott-module
 
 #
 # Board support modules
@@ -80,3 +79,4 @@ endef
 BUILTIN_COMMANDS := \
 	$(call _B, sercon,                 ,                          2048,  sercon_main                ) \
 	$(call _B, serdis,                 ,                          2048,  serdis_main                )
+MODULES		+= ./../../hott-px4-code/px4-hott-module

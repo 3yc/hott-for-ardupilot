@@ -37,6 +37,8 @@ v2-upload:
 px4-hott:
 	cp -Rv hott-px4-code/ardupilot/* ardupilot
 	cp -Rv hott-px4-code/PX4Firmware/* PX4Firmware
+#	echo "MODULES		+= ./../../hott-px4-code/px4-hott-module" >> ardupilot/mk/PX4/config_px4fmu-v1_APM.mk
+#	echo "MODULES		+= ./../../hott-px4-code/px4-hott-module" >> ardupilot/mk/PX4/config_px4fmu-v2_APM.mk
 
 clean:
 	cd ardupilot/ArduCopter; $(MAKE) px4-clean
