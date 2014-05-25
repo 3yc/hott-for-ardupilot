@@ -26,6 +26,12 @@ hexa: px4-hott
 tri: px4-hott
 	cd ardupilot/ArduCopter; $(MAKE) px4-tri
 
+octa: px4-hott
+	cd ardupilot/ArduCopter; $(MAKE) px4-octa
+
+y6: px4-hott
+	cd ardupilot/ArduCopter; $(MAKE) px4-y6
+
 #upload ArduCopter to PX4
 v1-upload:
 	cd ardupilot/ArduCopter; $(MAKE) px4-v1-upload
@@ -40,7 +46,30 @@ px4-hott:
 #	echo "MODULES		+= ./../../hott-px4-code/px4-hott-module" >> ardupilot/mk/PX4/config_px4fmu-v1_APM.mk
 #	echo "MODULES		+= ./../../hott-px4-code/px4-hott-module" >> ardupilot/mk/PX4/config_px4fmu-v2_APM.mk
 
+dist-hexa: hexa
+	mkdir -p dist
+	zip -j dist/AC-3.1.x-Hexa.zip PX4Firmware/Images/px4fmu-v1_APM.px4 PX4Firmware/Images/px4fmu-v2_APM.px4
+
+dist-quad: quad
+	mkdir -p dist
+	zip -j dist/AC-3.1.x-Quad.zip PX4Firmware/Images/px4fmu-v1_APM.px4 PX4Firmware/Images/px4fmu-v2_APM.px4
+
+dist-tri: tri
+	mkdir -p dist
+	zip -j dist/AC-3.1.x-Tri.zip PX4Firmware/Images/px4fmu-v1_APM.px4 PX4Firmware/Images/px4fmu-v2_APM.px4
+
+dist-octa: octa
+	mkdir -p dist
+	zip -j dist/AC-3.1.x-Octa.zip PX4Firmware/Images/px4fmu-v1_APM.px4 PX4Firmware/Images/px4fmu-v2_APM.px4
+
+dist-y6: y6
+	mkdir -p dist
+	zip -j dist/AC-3.1.x-Y6.zip PX4Firmware/Images/px4fmu-v1_APM.px4 PX4Firmware/Images/px4fmu-v2_APM.px4
+
+dist: dist-quad dist-hexa dist-tri dist-octa dist-y6
+
 clean:
 	cd ardupilot/ArduCopter; $(MAKE) px4-clean
 	cd PX4Firmware; $(MAKE) clean 
 	cd PX4NuttX/nuttx; $(MAKE) clean
+	rm dist/*
