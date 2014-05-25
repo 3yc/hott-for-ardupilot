@@ -1,7 +1,7 @@
 /**
  * @file ap_hott.cpp
  * @author Adam Majerczyk (majerczyk.adam@gmail.com)
- * @version 0.10.0.0b (beta)
+ * @version 0.9.8.2b
 */
 
 //
