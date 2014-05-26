@@ -72,4 +72,4 @@ clean:
 	cd ardupilot/ArduCopter; $(MAKE) px4-clean
 	cd PX4Firmware; $(MAKE) clean 
 	cd PX4NuttX/nuttx; $(MAKE) clean
-	rm dist/*
+	rm -f dist/*
