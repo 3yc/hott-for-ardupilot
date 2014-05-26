@@ -57,6 +57,8 @@
 //HoTT alarm macro
 #define HOTT_ALARM_NUM(a) (a-0x40)
 #define ALTITUDE_HISTORY_DATA_COUNT	10
+//Min. time before low voltage alarm is triggered
+#define LOW_VOLTAGE_TIMESPAN	3
 
 struct _hott_alarm_event_T {
 	uint16_t alarm_time; 		//Alarm play time in 1sec units
@@ -841,7 +843,15 @@ void hott_eam_check_mAh(void) {
 //	Check for low batteries
 //
 void hott_eam_check_mainPower(void){
-	if((battery.voltage_v < ap_data.main_battery_low_voltage)  && battery.voltage_v > 0.0) {
+	static uint8_t lowVoltageCounter = 0;
+	
+	if((battery.voltage_v <= ap_data.main_battery_low_voltage)  && battery.voltage_v > 0.0) {
+		if(lowVoltageCounter < LOW_VOLTAGE_TIMESPAN) {
+			//voltage should be low for at least for LOW_VOLTAGE_TIMESPAN seconds
+			lowVoltageCounter++;
+			return;
+		}
+
 		_hott_alarm_event _hott_ema_alarm_event;
 		_hott_ema_alarm_event.alarm_time = 6;	//1sec units
 		_hott_ema_alarm_event.alarm_time_replay = 30; //1sec unit
@@ -853,5 +863,7 @@ void hott_eam_check_mainPower(void){
 		if(_hott_add_alarm(&_hott_ema_alarm_event)) {
 //			warnx("adding battery alarm");			
 		}
+	} else {
+		lowVoltageCounter = 0;
 	}
 }
